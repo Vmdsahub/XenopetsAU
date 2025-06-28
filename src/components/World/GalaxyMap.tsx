@@ -1278,23 +1278,22 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
 
       {/* Notificação de Colisão - Centralizada no topo do mapa */}
       {collisionNotification.show && (
-        <motion.div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-black/10 text-white/60 px-4 py-2 rounded-lg"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-        >
-          <div className="text-center">
-            <p className="text-xs font-mono text-white/60 leading-tight whitespace-nowrap">
+        <div className="absolute top-4 left-0 right-0 z-50 flex justify-center">
+          <motion.div
+            className="bg-black/10 text-white/60 px-4 py-2 rounded-lg"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <p className="text-xs font-mono text-white/60 leading-tight text-center">
               ALTO: nave não credenciada
               <br />
               para cruzar barreira
             </p>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       )}
-
       {/* Canvas para estrelas com parallax otimizado */}
       <canvas
         ref={canvasRef}

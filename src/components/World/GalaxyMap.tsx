@@ -1276,44 +1276,24 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
         </motion.div>
       )}
 
-      {/* Indicador de modo auto-piloto ativo */}
-      {isAutoPilot && (
-        <motion.div
-          className="absolute top-4 right-4 z-50 bg-blue-500/20 backdrop-blur-sm text-white p-3 rounded-2xl shadow-2xl border border-blue-400/30"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">Auto-piloto Ativo</span>
-          </div>
-          <p className="text-xs text-blue-200 mt-1">
-            Segue o cursor - Clique para parar
-          </p>
-        </motion.div>
-      )}
-
       {/* Notificação de Colisão - Centralizada no topo do mapa */}
       {collisionNotification.show && (
-        <motion.div
-          className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/20 backdrop-blur-sm text-white p-3 rounded-2xl shadow-2xl border border-red-400/30 max-w-xs"
-          initial={{ opacity: 0, y: -30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -30, scale: 0.9 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        >
-          <div className="text-center">
-            <p className="text-xs text-white/90 leading-relaxed">
-              <span className="font-semibold">⚠️ Ei!</span> A sua Xenoship mal
-              aguenta a força da gravidade,
+        <div className="absolute top-4 left-0 right-0 z-50 flex justify-center">
+          <motion.div
+            className="bg-black/10 text-white/60 px-4 py-2 rounded-lg"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <p className="text-xs font-mono text-white/60 leading-tight text-center">
+              ALTO: nave não credenciada
               <br />
-              esqueceu que ela é muito frágil pra explorar os cosmos?
+              para cruzar barreira
             </p>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       )}
-
       {/* Canvas para estrelas com parallax otimizado */}
       <canvas
         ref={canvasRef}
@@ -1412,11 +1392,9 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
       </div>
 
       {/* Coordenadas simplificadas na parte inferior */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/20 text-xs font-mono font-thin">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/20 text-xs font-mono font-thin whitespace-nowrap">
         X: {mapX.get().toFixed(1)} Y: {mapY.get().toFixed(1)}
-        {isAutoPilot && (
-          <span className="ml-4 text-blue-300">[AUTO-PILOTO]</span>
-        )}
+        {isAutoPilot && <span className="ml-4 text-blue-300">[AUTO]</span>}
       </div>
     </div>
   );

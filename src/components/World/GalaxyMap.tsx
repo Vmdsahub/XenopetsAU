@@ -384,11 +384,11 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const renderShootingStars = useCallback(
     (ctx: CanvasRenderingContext2D, currentTime: number) => {
       shootingStarsRef.current.forEach((star) => {
-        const opacity = (star.life / star.maxLife) * 0.9;
+        const opacity = Math.min(1, (star.life / star.maxLife) * 1.2); // Mais luminosas
         const timeDelta = (currentTime - star.startTime) * 0.001;
 
         // Animação de tamanho baseada em seno
-        const sizeVariation = 1 + Math.sin(timeDelta * 8) * 0.2; // Pulso suave
+        const sizeVariation = 1 + Math.sin(timeDelta * 8) * 0.3; // Pulso mais intenso
         const currentSize = star.size * sizeVariation;
 
         // Desenha a cauda da estrela cadente

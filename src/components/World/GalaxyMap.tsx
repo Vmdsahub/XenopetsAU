@@ -1276,24 +1276,6 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
         </motion.div>
       )}
 
-      {/* Indicador de modo auto-piloto ativo */}
-      {isAutoPilot && (
-        <motion.div
-          className="absolute top-4 right-4 z-50 bg-blue-500/20 backdrop-blur-sm text-white p-3 rounded-2xl shadow-2xl border border-blue-400/30"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">Auto-piloto Ativo</span>
-          </div>
-          <p className="text-xs text-blue-200 mt-1">
-            Segue o cursor - Clique para parar
-          </p>
-        </motion.div>
-      )}
-
       {/* Notificação de Colisão - Centralizada no topo do mapa */}
       {collisionNotification.show && (
         <motion.div

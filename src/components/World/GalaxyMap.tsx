@@ -655,8 +655,12 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     generateLayer(4, 0.25, 2); // Middle
     generateLayer(2, 0.5, 3); // Foreground
 
+    // Atualiza e renderiza estrelas cadentes
+    updateShootingStars(Date.now());
+    renderShootingStars(ctx, Date.now());
+
     ctx.globalAlpha = 1;
-  }, [mapX, mapY]);
+  }, [mapX, mapY, updateShootingStars, renderShootingStars]);
 
   // Sistema de animação otimizado para Canvas
   useEffect(() => {

@@ -169,6 +169,24 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const autoPilotAnimationRef = useRef<number>();
   const holdTimeoutRef = useRef<number>();
 
+  // Sistema de estrelas cadentes
+  const shootingStarsRef = useRef<
+    {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+      maxLife: number;
+      size: number;
+      color: string;
+      tailLength: number;
+      angle: number;
+      startTime: number;
+    }[]
+  >([]);
+  const lastShootingStarTime = useRef(0);
+
   // Sistema de estrelas corrigido para escala -5000 a +5000
   const starData = useMemo(() => {
     const colors = [

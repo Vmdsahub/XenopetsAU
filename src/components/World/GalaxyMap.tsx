@@ -275,6 +275,204 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     shipPosRef.current = shipPosition;
   }, [shipPosition]);
 
+  // Sistema de geração de estrelas cadentes
+  const createShootingStar = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const colors = [
+      "#60A5FA", // Blue
+      "#F87171", // Red
+      "#34D399", // Green
+      "#FBBF24", // Yellow
+      "#A78BFA", // Purple
+      "#FB7185", // Pink
+      "#10B981", // Emerald
+      "#F59E0B", // Amber
+      "#8B5CF6", // Violet
+      "#06B6D4", // Cyan
+    ];
+
+    // Propriedades aleatórias para cada estrela cadente
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 4; // Velocidade entre 2-6
+    const size = 0.8 + Math.random() * 1.2; // Tamanho entre 0.8-2.0 (não muito grande)
+    const life = 60 + Math.random() * 120; // Vida entre 1-3 segundos a 60fps
+    const tailLength = 15 + Math.random() * 25; // Comprimento da cauda
+
+    // Posição inicial fora da tela
+    const margin = 100;
+    let startX, startY;
+
+    const side = Math.floor(Math.random() * 4);
+    switch (side) {
+      case 0: // Top
+        startX = Math.random() * (canvas.width + 2 * margin) - margin;
+        startY = -margin;
+        break;
+      case 1: // Right
+        startX = canvas.width + margin;
+        startY = Math.random() * (canvas.height + 2 * margin) - margin;
+        break;
+      case 2: // Bottom
+        startX = Math.random() * (canvas.width + 2 * margin) - margin;
+        startY = canvas.height + margin;
+        break;
+      default: // Left
+        startX = -margin;
+        startY = Math.random() * (canvas.height + 2 * margin) - margin;
+        break;
+    }
+
+    return {
+      x: startX,
+      y: startY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: life,
+      maxLife: life,
+      size: size,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tailLength: tailLength,
+      angle: angle,
+      startTime: Date.now(),
+    };
+  }, []);
+
+  const updateShootingStars = useCallback(
+    (currentTime: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Gera novas estrelas cadentes ocasionalmente
+      if (
+        currentTime - lastShootingStarTime.current >
+        2000 + Math.random() * 4000
+      ) {
+        const newStar = createShootingStar();
+        if (newStar) {
+          shootingStarsRef.current.push(newStar);
+          lastShootingStarTime.current = currentTime;
+        }
+      }
+
+      // Atualiza estrelas cadentes existentes
+      shootingStarsRef.current = shootingStarsRef.current.filter((star) => {
+        // Animação baseada em seno para movimento fluido
+        const timeDelta = (currentTime - star.startTime) * 0.001; // Converte para segundos
+        const sineWave = Math.sin(timeDelta * 3) * 0.3; // Ondulação suave
+
+        // Aplica movimento com ondulação
+        star.x += star.vx + sineWave * Math.cos(star.angle + Math.PI / 2);
+        star.y += star.vy + sineWave * Math.sin(star.angle + Math.PI / 2);
+
+        star.life--;
+
+        // Remove estrelas que saíram da tela ou acabou a vida
+        return (
+          star.life > 0 &&
+          star.x > -200 &&
+          star.x < canvas.width + 200 &&
+          star.y > -200 &&
+          star.y < canvas.height + 200
+        );
+      });
+    },
+    [createShootingStar],
+  );
+
+  const renderShootingStars = useCallback(
+    (ctx: CanvasRenderingContext2D, currentTime: number) => {
+      shootingStarsRef.current.forEach((star) => {
+        const opacity = (star.life / star.maxLife) * 0.9;
+        const timeDelta = (currentTime - star.startTime) * 0.001;
+
+        // Animação de tamanho baseada em seno
+        const sizeVariation = 1 + Math.sin(timeDelta * 8) * 0.2; // Pulso suave
+        const currentSize = star.size * sizeVariation;
+
+        // Desenha a cauda da estrela cadente
+        const tailPoints = [];
+        for (let i = 0; i < star.tailLength; i++) {
+          const progress = i / star.tailLength;
+          const tailOpacity = opacity * (1 - progress) * 0.7;
+
+          tailPoints.push({
+            x: star.x - star.vx * progress * 3,
+            y: star.y - star.vy * progress * 3,
+            opacity: tailOpacity,
+            size: currentSize * (1 - progress * 0.8),
+          });
+        }
+
+        // Renderiza a cauda
+        tailPoints.forEach((point, index) => {
+          if (point.opacity > 0.01) {
+            const gradient = ctx.createRadialGradient(
+              point.x,
+              point.y,
+              0,
+              point.x,
+              point.y,
+              point.size * 3,
+            );
+            gradient.addColorStop(
+              0,
+              star.color +
+                Math.floor(point.opacity * 255)
+                  .toString(16)
+                  .padStart(2, "0"),
+            );
+            gradient.addColorStop(
+              0.6,
+              star.color +
+                Math.floor(point.opacity * 128)
+                  .toString(16)
+                  .padStart(2, "0"),
+            );
+            gradient.addColorStop(1, star.color + "00");
+
+            ctx.globalAlpha = point.opacity;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, point.size * 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+
+        // Desenha o núcleo brilhante da estrela
+        const coreGradient = ctx.createRadialGradient(
+          star.x,
+          star.y,
+          0,
+          star.x,
+          star.y,
+          currentSize * 4,
+        );
+        coreGradient.addColorStop(0, "#FFFFFF");
+        coreGradient.addColorStop(0.3, star.color);
+        coreGradient.addColorStop(0.7, star.color + "88");
+        coreGradient.addColorStop(1, star.color + "00");
+
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, currentSize * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Núcleo interno brilhante
+        ctx.globalAlpha = opacity * 0.9;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.globalAlpha = 1;
+    },
+    [],
+  );
+
   // Geração dinâmica de estrelas baseada na posição da câmera
   const renderStarsCanvas = useCallback(() => {
     const canvas = canvasRef.current;

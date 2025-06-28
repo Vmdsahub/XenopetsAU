@@ -1279,17 +1279,17 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
       {/* Notificação de Colisão - Centralizada no topo do mapa */}
       {collisionNotification.show && (
         <motion.div
-          className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-white/5 backdrop-blur-sm text-white/70 p-3 rounded-2xl max-w-xs"
-          initial={{ opacity: 0, y: -30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -30, scale: 0.9 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/10 text-white/60 px-4 py-2 rounded-lg max-w-xs"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2 }}
         >
           <div className="text-center">
-            <p className="text-xs text-white/70 leading-relaxed">
-              ALTO: sua nave não está credenciada para
+            <p className="text-xs font-mono text-white/60 leading-tight">
+              ALTO: nave não credenciada
               <br />
-              cruzar a barreira de proteção
+              para cruzar barreira
             </p>
           </div>
         </motion.div>

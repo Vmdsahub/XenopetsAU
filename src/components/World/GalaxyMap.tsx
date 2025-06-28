@@ -675,6 +675,8 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      // Limpa estrelas cadentes ao desmontar
+      shootingStarsRef.current = [];
     };
   }, [renderStarsCanvas]);
 

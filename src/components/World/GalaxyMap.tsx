@@ -296,9 +296,9 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     // Propriedades aleatórias para cada estrela cadente
     const angle = Math.random() * Math.PI * 2;
     const speed = 2 + Math.random() * 4; // Velocidade entre 2-6
-    const size = 0.8 + Math.random() * 1.2; // Tamanho entre 0.8-2.0 (não muito grande)
+    const size = 0.4 + Math.random() * 0.6; // Tamanho entre 0.4-1.0 (menores)
     const life = 60 + Math.random() * 120; // Vida entre 1-3 segundos a 60fps
-    const tailLength = 15 + Math.random() * 25; // Comprimento da cauda
+    const tailLength = 12 + Math.random() * 18; // Comprimento da cauda (reduzido)
 
     // Posição inicial fora da tela
     const margin = 100;

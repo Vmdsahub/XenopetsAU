@@ -447,24 +447,24 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
           0,
           star.x,
           star.y,
-          currentSize * 4,
+          currentSize * 5,
         );
         coreGradient.addColorStop(0, "#FFFFFF");
-        coreGradient.addColorStop(0.3, star.color);
-        coreGradient.addColorStop(0.7, star.color + "88");
+        coreGradient.addColorStop(0.2, star.color);
+        coreGradient.addColorStop(0.5, star.color + "BB");
         coreGradient.addColorStop(1, star.color + "00");
 
-        ctx.globalAlpha = opacity;
+        ctx.globalAlpha = Math.min(1, opacity * 1.3);
         ctx.fillStyle = coreGradient;
         ctx.beginPath();
-        ctx.arc(star.x, star.y, currentSize * 4, 0, Math.PI * 2);
+        ctx.arc(star.x, star.y, currentSize * 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Núcleo interno brilhante
-        ctx.globalAlpha = opacity * 0.9;
+        // Núcleo interno mais brilhante
+        ctx.globalAlpha = Math.min(1, opacity * 1.5);
         ctx.fillStyle = "#FFFFFF";
         ctx.beginPath();
-        ctx.arc(star.x, star.y, currentSize, 0, Math.PI * 2);
+        ctx.arc(star.x, star.y, currentSize * 1.2, 0, Math.PI * 2);
         ctx.fill();
       });
 

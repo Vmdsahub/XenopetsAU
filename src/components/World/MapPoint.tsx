@@ -133,8 +133,14 @@ export const MapPoint: React.FC<MapPointProps> = ({
       <motion.div
         className="relative w-6 h-6 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
-          border: `1px solid ${colors.primary}40`,
+          background:
+            point.id === "mundo-gelado"
+              ? "transparent"
+              : `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
+          border:
+            point.id === "mundo-gelado"
+              ? "none"
+              : `1px solid ${colors.primary}40`,
         }}
         animate={{
           boxShadow: isNearby

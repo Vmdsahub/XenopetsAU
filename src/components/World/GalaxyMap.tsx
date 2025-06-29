@@ -289,41 +289,14 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     shipPosRef.current = shipPosition;
   }, [shipPosition]);
 
-  // Sincroniza posição inicial do mapa com posição salva da nave
+  // Debug: log das posições iniciais
   useEffect(() => {
-    console.log("🚀 Inicializando posição da nave:", shipPosition);
-    console.log("🗺️ Posição atual do mapa antes:", {
+    console.log("🚀 Posição inicial da nave:", shipPosition);
+    console.log("🗺️ Posição inicial do mapa:", {
       x: mapX.get(),
       y: mapY.get(),
     });
-
-    // A posição da nave salva representa o deslocamento do mundo desde o centro (50,50)
-    // O mapa visual precisa ser posicionado para refletir esse deslocamento
-    // Baseado na lógica de resetShipPosition: nave (50,50) = mapa (0,0)
-
-    // Calcula quanto a nave se moveu desde o centro
-    const deltaFromCenter = {
-      x: shipPosition.x - 50,
-      y: shipPosition.y - 50,
-    };
-
-    console.log("📐 Delta desde o centro:", deltaFromCenter);
-
-    // O mapa precisa se mover na direção oposta para simular o movimento da nave
-    // Usando escala aproximada baseada nos padrões do código
-    const mapOffsetX = -deltaFromCenter.x * 12;
-    const mapOffsetY = -deltaFromCenter.y * 12;
-
-    console.log("🎯 Offset calculado para o mapa:", {
-      x: mapOffsetX,
-      y: mapOffsetY,
-    });
-
-    mapX.set(mapOffsetX);
-    mapY.set(mapOffsetY);
-
-    console.log("✅ Posição final do mapa:", { x: mapX.get(), y: mapY.get() });
-  }, []); // Executa apenas na montagem inicial
+  }, []);
 
   // Sistema de geração de estrelas cadentes
   const createShootingStar = useCallback(() => {

@@ -153,23 +153,25 @@ export const MapPoint: React.FC<MapPointProps> = ({
         )}
       </motion.div>
 
-      {/* Ambient glow */}
-      <motion.div
-        className="absolute inset-0 rounded-full opacity-30 blur-sm -z-10"
-        style={{
-          background: `radial-gradient(circle, ${colors.primary}, transparent 70%)`,
-        }}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.3, 0.6, 0.3],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: Math.random() * 2,
-        }}
-      />
+      {/* Ambient glow - skip for mundo-gelado */}
+      {point.id !== "mundo-gelado" && (
+        <motion.div
+          className="absolute inset-0 rounded-full opacity-30 blur-sm -z-10"
+          style={{
+            background: `radial-gradient(circle, ${colors.primary}, transparent 70%)`,
+          }}
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: Math.random() * 2,
+          }}
+        />
+      )}
 
       {/* Hover tooltip */}
       <motion.div
@@ -184,8 +186,8 @@ export const MapPoint: React.FC<MapPointProps> = ({
         <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black/90" />
       </motion.div>
 
-      {/* Orbit rings for planets */}
-      {point.type === "planet" && (
+      {/* Orbit rings for planets - skip for mundo-gelado */}
+      {point.type === "planet" && point.id !== "mundo-gelado" && (
         <motion.div
           className="absolute inset-0 rounded-full border border-white/20 -z-10"
           style={{

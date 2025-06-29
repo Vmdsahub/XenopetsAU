@@ -84,10 +84,11 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     y.set(shipPosition.y);
   }, [shipPosition.x, shipPosition.y, x, y]);
 
-  // Create rotation transform
+  // Create rotation transform - fixed to avoid circular dependency
   const rotation = useTransform([x, y], ([currentX, currentY]) => {
-    const deltaX = currentX - (x.getPrevious() || 0);
-    const deltaY = currentY - (y.getPrevious() || 0);
+    // Simple rotation based on movement direction
+    const deltaX = currentX - shipPosition.x;
+    const deltaY = currentY - shipPosition.y;
     
     if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
       return Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;

@@ -1547,7 +1547,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
 
       {/* Área de drag fixa - sempre cobre toda a tela */}
       <div
-        className={`absolute inset-0 z-10 ${isDragging ? "cursor-grabbing" : isAutoPilot ? "cursor-pointer" : "cursor-grab"}`}
+        className={`absolute inset-0 z-5 ${isDragging ? "cursor-grabbing" : isAutoPilot ? "cursor-pointer" : "cursor-grab"}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

@@ -35,7 +35,17 @@ const getPointIcon = (type: string) => {
   }
 };
 
-const getPointColor = (type: string) => {
+const getPointColor = (type: string, pointId?: string) => {
+  // Cor específica para mundo-gelado
+  if (pointId === "mundo-gelado") {
+    return {
+      primary: "#3b82f6",
+      secondary: "#1e40af",
+      glow: "rgb(59, 130, 246)",
+      isCustomImage: true,
+    };
+  }
+
   switch (type) {
     case "planet":
       return {

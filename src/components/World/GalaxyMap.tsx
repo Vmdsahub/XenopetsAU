@@ -277,8 +277,9 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   useEffect(() => {
     // Calcula a posição do mapa baseada na posição da nave
     // O mapa se move no sentido oposto à nave para simular movimento
-    const mapPixelX = -(shipPosition.x - 50) * 24; // 24px por unidade de posição
-    const mapPixelY = -(shipPosition.y - 50) * 24; // 24px por unidade de posição
+    // Usando a mesma escala do código: (shipPosRef.current.x - proposedX) * 12
+    const mapPixelX = -(shipPosition.x - 50) * 12; // 12px por unidade de posição
+    const mapPixelY = -(shipPosition.y - 50) * 12; // 12px por unidade de posição
 
     mapX.set(mapPixelX);
     mapY.set(mapPixelY);

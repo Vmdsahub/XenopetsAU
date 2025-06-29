@@ -148,8 +148,20 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Motion values para posição do mapa (movimento inverso da nave)
-  const mapX = useMotionValue(0);
-  const mapY = useMotionValue(0);
+  const mapX = useMotionValue(() => {
+    const saved = localStorage.getItem("xenopets-player-data");
+    const data = saved
+      ? JSON.parse(saved)
+      : { ship: { x: 50, y: 50 }, map: { x: 0, y: 0 } };
+    return data.map.x;
+  });
+  const mapY = useMotionValue(() => {
+    const saved = localStorage.getItem("xenopets-player-data");
+    const data = saved
+      ? JSON.parse(saved)
+      : { ship: { x: 50, y: 50 }, map: { x: 0, y: 0 } };
+    return data.map.y;
+  });
   const shipRotation = useMotionValue(0);
 
   // Sistema de rotação suave

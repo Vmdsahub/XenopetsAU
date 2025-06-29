@@ -88,7 +88,7 @@ export const MapPoint: React.FC<MapPointProps> = ({
   style,
 }) => {
   const Icon = getPointIcon(point.type);
-  const colors = getPointColor(point.type);
+  const colors = getPointColor(point.type, point.id);
 
   return (
     <motion.div

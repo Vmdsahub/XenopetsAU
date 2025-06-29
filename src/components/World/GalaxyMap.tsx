@@ -1138,8 +1138,11 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     const interval = setInterval(() => {
       if (!isDragging && !isAutoPilot) {
         localStorage.setItem(
-          "xenopets-player-position",
-          JSON.stringify(shipPosRef.current),
+          "xenopets-player-data",
+          JSON.stringify({
+            ship: shipPosRef.current,
+            map: { x: mapX.get(), y: mapY.get() },
+          }),
         );
       }
     }, 2000);

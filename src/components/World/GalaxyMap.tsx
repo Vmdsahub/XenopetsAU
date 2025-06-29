@@ -1470,7 +1470,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     animate(mapX, 0, { duration: 0.5 });
     animate(mapY, 0, { duration: 0.5 });
     animate(shipRotation, 0, { duration: 0.5 });
-    localStorage.removeItem("xenopets-player-position");
+    localStorage.removeItem("xenopets-player-data");
   };
 
   const handlePointClick = (pointId: string) => {

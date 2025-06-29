@@ -81,7 +81,8 @@ const generateLinearPoints = () => {
       name: "Mundo Gelado",
       type: "planet" as const,
       description: "Planeta coberto de gelo eterno",
-      image: "https://images.pexels.com/photos/220201/pexels-photo-220201.jpeg",
+      image:
+        "https://cdn.builder.io/api/v1/image/assets%2F972df3cc1e344880ab2a8d2ca65f8d2b%2F07a8eb270920440caecf8ebc2ae10dfe?format=webp&width=800",
     },
     {
       id: "estacao-borda",

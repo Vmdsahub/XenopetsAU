@@ -131,7 +131,9 @@ export const MapPoint: React.FC<MapPointProps> = ({
 
       {/* Main point */}
       <motion.div
-        className="relative w-6 h-6 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm overflow-hidden"
+        className={`relative rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm overflow-hidden ${
+          point.id === "mundo-gelado" ? "w-60 h-60" : "w-6 h-6"
+        }`}
         style={{
           background:
             point.id === "mundo-gelado"

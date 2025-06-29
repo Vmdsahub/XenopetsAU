@@ -41,8 +41,8 @@ const wrap = (value: number, min: number, max: number): number => {
   return result;
 };
 
-// Gera pontos em círculo ao redor do centro com 40px de espaçamento
-const generateCircularPoints = () => {
+// Gera pontos em linha horizontal para facilitar cliques
+const generateLinearPoints = () => {
   const points = [
     {
       id: "terra-nova",
@@ -101,19 +101,17 @@ const generateCircularPoints = () => {
     },
   ];
 
-  const centerX = 50; // Centro do mapa em %
-  const centerY = 50;
-  const radius = 6; // Raio em % para formar um círculo pequeno
+  // Arranja pontos em linha horizontal
+  const centerY = 50; // Centro vertical
+  const spacing = 80 / (points.length - 1); // Espaçamento entre 10% e 90%
 
   return points.map((point, index) => {
-    const angle = (index / points.length) * 2 * Math.PI;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
+    const x = 10 + index * spacing; // Distribui de 10% a 90%
 
     return {
       ...point,
-      x: Math.max(5, Math.min(95, x)), // Limita entre 5% e 95%
-      y: Math.max(5, Math.min(95, y)),
+      x: x,
+      y: centerY,
     };
   });
 };
@@ -150,7 +148,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const mapY = useMotionValue(0);
   const shipRotation = useMotionValue(0);
 
-  // Sistema de rotação suave
+  // Sistema de rotaç��o suave
   const targetRotation = useRef(0);
   const lastRotationUpdate = useRef(0);
 

@@ -121,7 +121,9 @@ const GALAXY_POINTS: MapPointData[] = generateLinearPoints();
 export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const [shipPosition, setShipPosition] = useState(() => {
     const saved = localStorage.getItem("xenopets-player-position");
-    return saved ? JSON.parse(saved) : { x: 50, y: 50 };
+    const position = saved ? JSON.parse(saved) : { x: 50, y: 50 };
+    console.log("💾 Posição carregada do localStorage:", { saved, position });
+    return position;
   });
 
   const [nearbyPoint, setNearbyPoint] = useState<string | null>(null);

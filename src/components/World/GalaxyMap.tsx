@@ -70,6 +70,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isDecelerating, setIsDecelerating] = useState(false);
   const [nearbyPoint, setNearbyPoint] = useState<string | null>(null);
+  const lastRotation = useRef(0);
 
   // Get ship position from store
   const { shipPosition, setShipPosition } = useGameStore();
@@ -88,9 +89,11 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     const deltaX = currentX - x.getPrevious();
     const deltaY = currentY - y.getPrevious();
     if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
-      return Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
+      const newRotation = Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
+      lastRotation.current = newRotation;
+      return newRotation;
     }
-    return rotation.get();
+    return lastRotation.current;
   });
 
   const checkBoundaries = (newX: number, newY: number) => {

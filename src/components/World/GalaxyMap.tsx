@@ -116,7 +116,7 @@ const generateLinearPoints = () => {
   });
 };
 
-const GALAXY_POINTS: MapPointData[] = generateCircularPoints();
+const GALAXY_POINTS: MapPointData[] = generateLinearPoints();
 
 export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const [shipPosition, setShipPosition] = useState(() => {
@@ -148,7 +148,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const mapY = useMotionValue(0);
   const shipRotation = useMotionValue(0);
 
-  // Sistema de rotaç��o suave
+  // Sistema de rotação suave
   const targetRotation = useRef(0);
   const lastRotationUpdate = useRef(0);
 

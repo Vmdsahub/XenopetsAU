@@ -70,7 +70,6 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isDecelerating, setIsDecelerating] = useState(false);
   const [nearbyPoint, setNearbyPoint] = useState<string | null>(null);
-  const lastRotation = useRef(0);
 
   // Get ship position from store
   const { shipPosition, setShipPosition } = useGameStore();
@@ -85,15 +84,16 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     y.set(shipPosition.y);
   }, [shipPosition.x, shipPosition.y, x, y]);
 
+  // Create rotation transform
   const rotation = useTransform([x, y], ([currentX, currentY]) => {
-    const deltaX = currentX - x.getPrevious();
-    const deltaY = currentY - y.getPrevious();
+    const deltaX = currentX - (x.getPrevious() || 0);
+    const deltaY = currentY - (y.getPrevious() || 0);
+    
     if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
-      const newRotation = Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
-      lastRotation.current = newRotation;
-      return newRotation;
+      return Math.atan2(deltaY, deltaX) * (180 / Math.PI) + 90;
     }
-    return lastRotation.current;
+    
+    return 0;
   });
 
   const checkBoundaries = (newX: number, newY: number) => {
@@ -185,24 +185,6 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     
     onPointClick(point.id, point);
   };
-
-  // Update position in store when motion values change (for real-time updates)
-  useEffect(() => {
-    const unsubscribeX = x.on("change", (latest) => {
-      const currentY = y.get();
-      setShipPosition({ x: latest, y: currentY });
-    });
-
-    const unsubscribeY = y.on("change", (latest) => {
-      const currentX = x.get();
-      setShipPosition({ x: currentX, y: latest });
-    });
-
-    return () => {
-      unsubscribeX();
-      unsubscribeY();
-    };
-  }, [x, y, setShipPosition]);
 
   return (
     <div

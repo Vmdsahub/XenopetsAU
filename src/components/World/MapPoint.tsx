@@ -131,7 +131,7 @@ export const MapPoint: React.FC<MapPointProps> = ({
 
       {/* Main point */}
       <motion.div
-        className="relative w-6 h-6 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm"
+        className="relative w-6 h-6 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm overflow-hidden"
         style={{
           background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
           border: `1px solid ${colors.primary}40`,
@@ -142,7 +142,15 @@ export const MapPoint: React.FC<MapPointProps> = ({
             : `0 0 8px ${colors.glow}60`,
         }}
       >
-        <Icon size={14} className="text-white drop-shadow-sm" />
+        {point.id === "mundo-gelado" ? (
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets%2F972df3cc1e344880ab2a8d2ca65f8d2b%2F07a8eb270920440caecf8ebc2ae10dfe?format=webp&width=800"
+            alt="Mundo Gelado"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Icon size={14} className="text-white drop-shadow-sm" />
+        )}
       </motion.div>
 
       {/* Ambient glow */}

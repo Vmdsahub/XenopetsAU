@@ -273,17 +273,6 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     shipPosRef.current = shipPosition;
   }, [shipPosition]);
 
-  // Sincroniza posição inicial do mapa com posição salva da nave
-  useEffect(() => {
-    // Baseado na função resetShipPosition: quando nave está em (50,50), mapa está em (0,0)
-    // Então quando nave está em qualquer posição, precisamos calcular o offset do mapa
-    // O movimento é acumulativo baseado em deltaX/deltaY do mouse, não numa conversão direta
-    // Vamos manter o mapa em (0,0) e deixar o sistema de movimento normal funcionar
-    // apenas garantindo que a posição da nave seja restaurada corretamente
-    // Por ora, não vamos modificar mapX e mapY na inicialização
-    // O problema pode estar em outro lugar
-  }, []); // Executa apenas uma vez na montagem
-
   // Sistema de geração de estrelas cadentes
   const createShootingStar = useCallback(() => {
     const canvas = canvasRef.current;

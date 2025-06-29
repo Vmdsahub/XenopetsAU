@@ -273,6 +273,17 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
     shipPosRef.current = shipPosition;
   }, [shipPosition]);
 
+  // Sincroniza posição inicial do mapa com posição salva da nave
+  useEffect(() => {
+    // Calcula a posição do mapa baseada na posição da nave
+    // O mapa se move no sentido oposto à nave para simular movimento
+    const mapPixelX = -(shipPosition.x - 50) * 24; // 24px por unidade de posição
+    const mapPixelY = -(shipPosition.y - 50) * 24; // 24px por unidade de posição
+
+    mapX.set(mapPixelX);
+    mapY.set(mapPixelY);
+  }, []); // Executa apenas uma vez na montagem
+
   // Sistema de geração de estrelas cadentes
   const createShootingStar = useCallback(() => {
     const canvas = canvasRef.current;

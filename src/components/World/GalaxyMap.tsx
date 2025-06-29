@@ -1451,7 +1451,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
   // Renderiza pontos de forma otimizada
   const renderPoints = () => {
     return GALAXY_POINTS.map((point) => (
-      <div key={point.id} className="pointer-events-auto">
+      <div key={point.id} className="pointer-events-auto relative z-30">
         <MapPoint
           point={point}
           isNearby={nearbyPoint === point.id}

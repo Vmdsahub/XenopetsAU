@@ -1600,7 +1600,7 @@ export const GalaxyMap: React.FC<GalaxyMapProps> = ({ onPointClick }) => {
           />
         </div>
         {/* Renderiza apenas uma vez */}
-        <div className="absolute inset-0">{renderPoints()}</div>
+        <div className="absolute inset-0 z-20">{renderPoints()}</div>
       </motion.div>
 
       {/* Nave do jogador - fixa no centro */}

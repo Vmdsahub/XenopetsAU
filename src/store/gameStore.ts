@@ -2,9 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   GameState,
+  User,
   Pet,
   Item,
-  User,
   Notification,
   Achievement,
   Collectible,
@@ -12,128 +12,24 @@ import {
   RedeemCode,
 } from "../types/game";
 import { gameService } from "../services/gameService";
+import { storeService } from "../services/storeService";
 import { playNotificationSound } from "../utils/soundManager";
 
-interface GameStore extends GameState {
-  // Core actions
-  setUser: (user: User | null) => void;
-  setActivePet: (pet: Pet | null) => void;
-  setCurrentScreen: (screen: string) => void;
-  setViewedUserId: (userId: string | null) => void;
-
-  // Egg selection and hatching state
-  selectedEggForHatching: any | null;
-  isHatchingInProgress: boolean;
-  hatchingEgg: {
-    eggData: any;
-    startTime: Date;
-    userId: string; // Track which user this hatching belongs to
-  } | null;
-  setSelectedEggForHatching: (eggData: any) => void;
-  clearSelectedEggForHatching: () => void;
-  setIsHatchingInProgress: (isHatching: boolean) => void;
-  setHatchingEgg: (eggData: any) => void;
-  clearHatchingEgg: () => void;
-  getHatchingTimeRemaining: () => number;
-
-  // Pet management
-  createPet: (
-    petData: Omit<Pet, "id" | "createdAt" | "updatedAt">,
-  ) => Promise<Pet | null>;
-  updatePetStats: (petId: string, stats: Partial<Pet>) => Promise<boolean>;
-
-  // Currency management
-  updateCurrency: (
-    type: "xenocoins" | "cash",
-    amount: number,
-  ) => Promise<boolean>;
-
-  // Inventory management
-  addToInventory: (item: Item) => Promise<boolean>;
-  removeFromInventory: (
-    inventoryItemId: string,
-    quantity?: number,
-  ) => Promise<boolean>;
-  useItem: (inventoryItemId: string, petId: string) => Promise<boolean>;
-  getUniversalItem: (slug: string) => Promise<Item | null>;
-
-  // Store management
-  getAllStores: () => Store[];
-  getStoreById: (storeId: string) => Store | null;
-  getStoresByType: (type: StoreType) => Store[];
-  purchaseStoreItem: (
-    storeId: string,
-    itemId: string,
-    quantity?: number,
-  ) => Promise<PurchaseResult>;
-  getStoreInventory: (storeId: string) => StoreItem[];
-  restockStore: (storeId: string) => Promise<boolean>;
-
-  // Notifications
-  addNotification: (
-    notification: Omit<Notification, "id" | "createdAt">,
-  ) => void;
-  markNotificationAsRead: (notificationId: string) => void;
-  markAllNotificationsAsRead: () => void;
-  deleteNotification: (notificationId: string) => void;
-  clearNotifications: () => void;
-
-  // Achievements and collectibles
-  loadUserAchievements: (userId?: string) => Promise<void>;
-  loadUserCollectibles: (userId?: string) => Promise<void>;
-  getAllCollectibles: () => Collectible[];
-  getCollectiblesByType: (type: string) => Collectible[];
-  getCollectedCollectibles: () => Collectible[];
-  getTotalCollectiblePoints: () => number;
-  collectItem: (collectibleName: string) => Promise<boolean>;
-
-  // Player search and profiles
-  searchPlayers: (query: string) => Promise<User[]>;
-  getPlayerProfile: (userId: string) => Promise<User | null>;
-
-  // Redeem codes
-  getAllRedeemCodes: () => RedeemCode[];
-  getActiveRedeemCodes: () => RedeemCode[];
-  createRedeemCode: (
-    codeData: Omit<RedeemCode, "id" | "createdAt" | "currentUses" | "usedBy">,
-  ) => void;
-  updateRedeemCode: (codeId: string, updates: Partial<RedeemCode>) => void;
-  deleteRedeemCode: (codeId: string) => void;
-  redeemCode: (code: string) => Promise<{ success: boolean; message: string }>;
-
-  // Daily check-in system
-  dailyCheckin: () => void;
-  canClaimDailyCheckin: () => boolean;
-  getDailyCheckinStreak: () => number;
-  canClaimWeeklyReward: () => boolean;
-  claimWeeklyReward: () => void;
-
-  // Data loading and synchronization
-  initializeNewUser: (userData: User) => void;
-  loadUserData: (userId: string) => Promise<void>;
-  subscribeToRealtimeUpdates: () => void;
-  unsubscribeFromRealtimeUpdates: () => void;
-}
-
-// Store-related types
+// Store interfaces
 export interface Store {
   id: string;
   name: string;
   description: string;
-  type: StoreType;
+  type: "general" | "equipment" | "food" | "potions" | "premium" | "seasonal";
   npcName: string;
   npcImage: string;
   npcDialogue: string;
-
-  inventory: StoreItem[];
-  restockSchedule: RestockSchedule;
-  specialOffers: SpecialOffer[];
   isOpen: boolean;
   openHours: { start: number; end: number };
+  inventory: StoreItem[];
+  specialOffers: SpecialOffer[];
   reputation: number;
   discountLevel: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface StoreItem {
@@ -143,428 +39,141 @@ export interface StoreItem {
   currentPrice: number;
   currency: "xenocoins" | "cash";
   stock: number;
-  maxStock: number;
-  restockRate: number;
-  isLimited: boolean;
   isOnSale: boolean;
   saleDiscount: number;
-  requirements?: ItemRequirement[];
-  lastRestocked: Date;
-}
-
-export interface ItemRequirement {
-  type: "level" | "achievement" | "item" | "currency" | "reputation";
-  value: string | number;
-  description: string;
-}
-
-export interface RestockSchedule {
-  interval: number; // hours
-  lastRestock: Date;
-  nextRestock: Date;
-  items: string[]; // item slugs to restock
+  isLimited: boolean;
+  requirements: Requirement[];
 }
 
 export interface SpecialOffer {
   id: string;
   name: string;
-  description: string;
-  itemSlug: string;
   originalPrice: number;
   salePrice: number;
   currency: "xenocoins" | "cash";
-  startDate: Date;
-  endDate: Date;
-  maxPurchases: number;
-  currentPurchases: number;
-  isActive: boolean;
+  expiresAt: Date;
+}
+
+export interface Requirement {
+  type: "level" | "achievement" | "item" | "currency";
+  value: any;
+  description: string;
 }
 
 export interface PurchaseResult {
   success: boolean;
   message: string;
-  item?: Item;
   totalCost: number;
   currency: "xenocoins" | "cash";
   newBalance: number;
 }
 
-export type StoreType =
-  | "general"
-  | "equipment"
-  | "food"
-  | "potions"
-  | "collectibles"
-  | "premium"
-  | "seasonal";
+// Ship position interface
+export interface ShipPosition {
+  x: number;
+  y: number;
+}
 
-// Mock store data - in a real app, this would come from your database
-const mockStores: Store[] = [
-  {
-    id: "woodland-general",
-    name: "Woodland General Store",
-    description:
-      "Your one-stop shop for basic pet care items and everyday necessities",
-    type: "general",
-    npcName: "Merchant Maya",
-    npcImage:
-      "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200",
-    npcDialogue:
-      "Welcome to my shop, traveler! I have the finest items for your pets. What can I help you find today?",
+interface GameStore extends GameState {
+  // Ship position state
+  shipPosition: ShipPosition;
+  setShipPosition: (position: ShipPosition) => void;
 
-    inventory: [
-      {
-        id: "si1",
-        itemSlug: "health-potion-1",
-        basePrice: 50,
-        currentPrice: 50,
-        currency: "xenocoins",
-        stock: 25,
-        maxStock: 50,
-        restockRate: 5,
-        isLimited: false,
-        isOnSale: false,
-        saleDiscount: 0,
-        lastRestocked: new Date(),
-      },
-      {
-        id: "si2",
-        itemSlug: "magic-apple-1",
-        basePrice: 25,
-        currentPrice: 20,
-        currency: "xenocoins",
-        stock: 30,
-        maxStock: 40,
-        restockRate: 8,
-        isLimited: false,
-        isOnSale: true,
-        saleDiscount: 20,
-        lastRestocked: new Date(),
-      },
-      {
-        id: "si3",
-        itemSlug: "happiness-toy-1",
-        basePrice: 30,
-        currentPrice: 30,
-        currency: "xenocoins",
-        stock: 15,
-        maxStock: 20,
-        restockRate: 3,
-        isLimited: false,
-        isOnSale: false,
-        saleDiscount: 0,
-        lastRestocked: new Date(),
-      },
-    ],
-    restockSchedule: {
-      interval: 6,
-      lastRestock: new Date(),
-      nextRestock: new Date(Date.now() + 6 * 60 * 60 * 1000),
-      items: ["health-potion-1", "magic-apple-1", "happiness-toy-1"],
-    },
-    specialOffers: [
-      {
-        id: "weekly-apple-deal",
-        name: "Weekly Apple Special",
-        description: "Get Magic Apples at 20% off this week!",
-        itemSlug: "magic-apple-1",
-        originalPrice: 25,
-        salePrice: 20,
-        currency: "xenocoins",
-        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
-        maxPurchases: 100,
-        currentPurchases: 23,
-        isActive: true,
-      },
-    ],
-    isOpen: true,
-    openHours: { start: 6, end: 22 },
-    reputation: 0,
-    discountLevel: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "oasis-trading",
-    name: "Oasis Trading Post",
-    description: "Rare items and equipment for the adventurous explorer",
-    type: "equipment",
-    npcName: "Desert Trader Zara",
-    npcImage:
-      "https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg?auto=compress&cs=tinysrgb&w=200",
-    npcDialogue:
-      "Ah, a fellow traveler! The desert has been kind to me, and I have rare treasures to share. Perhaps something for your companions?",
+  // Egg hatching state
+  selectedEggForHatching: any;
+  isHatchingInProgress: boolean;
+  hatchingEgg: any;
+  setSelectedEggForHatching: (egg: any) => void;
+  clearSelectedEggForHatching: () => void;
+  setIsHatchingInProgress: (inProgress: boolean) => void;
+  setHatchingEgg: (egg: any) => void;
+  clearHatchingEgg: () => void;
+  getHatchingTimeRemaining: () => number;
 
-    inventory: [
-      {
-        id: "si4",
-        itemSlug: "energy-drink-1",
-        basePrice: 75,
-        currentPrice: 75,
-        currency: "xenocoins",
-        stock: 12,
-        maxStock: 15,
-        restockRate: 2,
-        isLimited: false,
-        isOnSale: false,
-        saleDiscount: 0,
-        lastRestocked: new Date(),
-      },
-      {
-        id: "si5",
-        itemSlug: "desert-crystal-1",
-        basePrice: 200,
-        currentPrice: 200,
-        currency: "xenocoins",
-        stock: 5,
-        maxStock: 8,
-        restockRate: 1,
-        isLimited: true,
-        isOnSale: false,
-        saleDiscount: 0,
-        requirements: [
-          {
-            type: "level",
-            value: 5,
-            description: "Requires pet level 5 or higher",
-          },
-        ],
-        lastRestocked: new Date(),
-      },
-    ],
-    restockSchedule: {
-      interval: 12,
-      lastRestock: new Date(),
-      nextRestock: new Date(Date.now() + 12 * 60 * 60 * 1000),
-      items: ["energy-drink-1", "desert-crystal-1"],
-    },
-    specialOffers: [],
-    isOpen: true,
-    openHours: { start: 8, end: 20 },
-    reputation: 0,
-    discountLevel: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "mountain-armory",
-    name: "Mountain Armory",
-    description: "Premium equipment and weapons for serious trainers",
-    type: "equipment",
-    npcName: "Blacksmith Boris",
-    npcImage:
-      "https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=200",
-    npcDialogue:
-      "Welcome to my forge! These mountains provide the finest materials for crafting. Your pets deserve the best protection and weapons!",
+  // User management
+  setUser: (user: User | null) => void;
+  updateUser: (userData: Partial<User>) => void;
+  initializeNewUser: (user: User) => void;
 
-    inventory: [
-      {
-        id: "si6",
-        itemSlug: "iron-armor-1",
-        basePrice: 500,
-        currentPrice: 500,
-        currency: "xenocoins",
-        stock: 3,
-        maxStock: 5,
-        restockRate: 1,
-        isLimited: true,
-        isOnSale: false,
-        saleDiscount: 0,
-        requirements: [
-          {
-            type: "level",
-            value: 10,
-            description: "Requires pet level 10 or higher",
-          },
-        ],
-        lastRestocked: new Date(),
-      },
-      {
-        id: "si7",
-        itemSlug: "crystal-sword-1",
-        basePrice: 1000,
-        currentPrice: 1000,
-        currency: "xenocoins",
-        stock: 2,
-        maxStock: 3,
-        restockRate: 1,
-        isLimited: true,
-        isOnSale: false,
-        saleDiscount: 0,
-        requirements: [
-          {
-            type: "level",
-            value: 15,
-            description: "Requires pet level 15 or higher",
-          },
-          {
-            type: "achievement",
-            value: "First Battle Victory",
-            description: "Must have won at least one battle",
-          },
-        ],
-        lastRestocked: new Date(),
-      },
-      {
-        id: "si8",
-        itemSlug: "premium-elixir-1",
-        basePrice: 5,
-        currentPrice: 5,
-        currency: "cash",
-        stock: 10,
-        maxStock: 10,
-        restockRate: 2,
-        isLimited: false,
-        isOnSale: false,
-        saleDiscount: 0,
-        lastRestocked: new Date(),
-      },
-    ],
-    restockSchedule: {
-      interval: 24,
-      lastRestock: new Date(),
-      nextRestock: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      items: ["iron-armor-1", "crystal-sword-1", "premium-elixir-1"],
-    },
-    specialOffers: [],
-    isOpen: true,
-    openHours: { start: 7, end: 19 },
-    reputation: 0,
-    discountLevel: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+  // Pet management
+  setActivePet: (pet: Pet | null) => void;
+  addPet: (pet: Pet) => void;
+  updatePet: (petId: string, updates: Partial<Pet>) => void;
+  createPet: (petData: Omit<Pet, "id" | "createdAt" | "updatedAt">) => Promise<Pet | null>;
 
-// Mock universal items database
-const universalItems: Record<string, Item> = {
-  "health-potion-1": {
-    id: "health-potion-1",
-    slug: "health-potion-1",
-    name: "Health Potion",
-    description: "A magical elixir that restores 5 health points instantly",
-    type: "Potion",
-    rarity: "Common",
-    price: 50,
-    currency: "xenocoins",
-    effects: { health: 5 },
-    dailyLimit: 10,
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "magic-apple-1": {
-    id: "magic-apple-1",
-    slug: "magic-apple-1",
-    name: "Magic Apple",
-    description: "A mystical fruit that restores hunger and provides energy",
-    type: "Food",
-    rarity: "Uncommon",
-    price: 25,
-    currency: "xenocoins",
-    effects: { hunger: 3, happiness: 1 },
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "happiness-toy-1": {
-    id: "happiness-toy-1",
-    slug: "happiness-toy-1",
-    name: "Happiness Toy",
-    description: "A colorful toy that brings joy to pets",
-    type: "Special",
-    rarity: "Common",
-    price: 30,
-    currency: "xenocoins",
-    effects: { happiness: 2 },
-    dailyLimit: 5,
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "energy-drink-1": {
-    id: "energy-drink-1",
-    slug: "energy-drink-1",
-    name: "Energy Drink",
-    description: "A refreshing beverage that boosts pet stats temporarily",
-    type: "Potion",
-    rarity: "Uncommon",
-    price: 75,
-    currency: "xenocoins",
-    effects: { speed: 2, dexterity: 1 },
-    dailyLimit: 3,
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "desert-crystal-1": {
-    id: "desert-crystal-1",
-    slug: "desert-crystal-1",
-    name: "Desert Crystal",
-    description: "A rare crystal that enhances magical abilities",
-    type: "Special",
-    rarity: "Rare",
-    price: 200,
-    currency: "xenocoins",
-    effects: { intelligence: 3, luck: 1 },
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "iron-armor-1": {
-    id: "iron-armor-1",
-    slug: "iron-armor-1",
-    name: "Iron Armor",
-    description: "Sturdy armor that provides excellent protection",
-    type: "Equipment",
-    rarity: "Rare",
-    price: 500,
-    currency: "xenocoins",
-    effects: { defense: 5, health: 2 },
-    slot: "torso",
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "crystal-sword-1": {
-    id: "crystal-sword-1",
-    slug: "crystal-sword-1",
-    name: "Crystal Sword",
-    description: "A magnificent sword forged from mountain crystals",
-    type: "Weapon",
-    rarity: "Epic",
-    price: 1000,
-    currency: "xenocoins",
-    effects: { attack: 8, strength: 3 },
-    slot: "weapon",
-    quantity: 1,
-    createdAt: new Date(),
-  },
-  "premium-elixir-1": {
-    id: "premium-elixir-1",
-    slug: "premium-elixir-1",
-    name: "Premium Elixir",
-    description: "An exclusive elixir that dramatically boosts all stats",
-    type: "Potion",
-    rarity: "Legendary",
-    price: 5,
-    currency: "cash",
-    effects: {
-      health: 3,
-      happiness: 3,
-      strength: 2,
-      dexterity: 2,
-      intelligence: 2,
-    },
-    dailyLimit: 1,
-    quantity: 1,
-    createdAt: new Date(),
-  },
-};
+  // Currency management
+  updateCurrency: (type: "xenocoins" | "cash", amount: number) => Promise<boolean>;
+  setCurrency: (xenocoins: number, cash: number) => void;
+
+  // Inventory management
+  addToInventory: (item: Item, quantity?: number) => Promise<boolean>;
+  removeFromInventory: (inventoryItemId: string, quantity?: number) => Promise<boolean>;
+  useItem: (inventoryItemId: string, petId: string) => Promise<boolean>;
+
+  // Notification management
+  addNotification: (notification: Omit<Notification, "id" | "createdAt">) => void;
+  markNotificationAsRead: (notificationId: string) => void;
+  markAllNotificationsAsRead: () => void;
+  deleteNotification: (notificationId: string) => void;
+  clearNotifications: () => void;
+
+  // Screen navigation
+  setCurrentScreen: (screen: string) => void;
+
+  // Store management
+  getAllStores: () => Store[];
+  getStoresByType: (type: string) => Store[];
+  purchaseStoreItem: (storeId: string, itemId: string, quantity: number) => Promise<PurchaseResult>;
+  getUniversalItem: (slug: string) => Promise<Item | null>;
+  restockStore: (storeId: string) => Promise<boolean>;
+
+  // Achievement management
+  checkAchievements: () => void;
+  unlockAchievement: (achievementId: string) => void;
+
+  // Collectible management
+  getAllCollectibles: () => Collectible[];
+  getCollectiblesByType: (type: "egg" | "fish" | "gem" | "stamp" | "stone" | "artwork") => Collectible[];
+  getCollectedCollectibles: () => Collectible[];
+  getTotalCollectiblePoints: () => number;
+  collectItem: (collectibleName: string) => Promise<boolean>;
+
+  // Daily check-in
+  dailyCheckin: () => void;
+  canClaimDailyCheckin: () => boolean;
+  getDailyCheckinStreak: () => number;
+  canClaimWeeklyReward: () => boolean;
+  claimWeeklyReward: () => void;
+
+  // Redeem codes
+  getAllRedeemCodes: () => RedeemCode[];
+  getActiveRedeemCodes: () => RedeemCode[];
+  createRedeemCode: (codeData: Omit<RedeemCode, "id" | "createdAt" | "currentUses" | "usedBy">) => void;
+  updateRedeemCode: (codeId: string, updates: Partial<RedeemCode>) => void;
+  deleteRedeemCode: (codeId: string) => void;
+  redeemCode: (code: string) => Promise<{ success: boolean; message: string }>;
+
+  // Player search and profiles
+  searchPlayers: (query: string) => Promise<User[]>;
+  getPlayerProfile: (userId: string) => Promise<User | null>;
+  setViewedUserId: (userId: string | null) => void;
+
+  // Data loading and real-time updates
+  loadUserData: (userId: string) => Promise<void>;
+  loadUserAchievements: (userId: string) => Promise<void>;
+  loadUserCollectibles: (userId: string) => Promise<void>;
+  subscribeToRealtimeUpdates: () => void;
+  unsubscribeFromRealtimeUpdates: () => void;
+
+  // Internal state
+  subscriptionId: string | null;
+}
 
 // Helper function to convert date strings back to Date objects
 const rehydrateDates = (obj: any): any => {
   if (!obj) return obj;
 
-  if (
-    typeof obj === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)
-  ) {
+  if (typeof obj === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)) {
     return new Date(obj);
   }
 
@@ -575,16 +184,7 @@ const rehydrateDates = (obj: any): any => {
   if (typeof obj === "object") {
     const result: any = {};
     for (const [key, value] of Object.entries(obj)) {
-      if (
-        key.includes("At") ||
-        key.includes("Date") ||
-        key === "createdAt" ||
-        key === "updatedAt" ||
-        key === "lastLogin" ||
-        key === "hatchTime" ||
-        key === "deathDate" ||
-        key === "lastInteraction"
-      ) {
+      if (key === "createdAt" || key === "lastLogin" || key === "updatedAt" || key === "hatchTime" || key === "lastInteraction" || key === "deathDate" || key === "unlockedAt" || key === "collectedAt" || key === "expiresAt") {
         result[key] = typeof value === "string" ? new Date(value) : value;
       } else {
         result[key] = rehydrateDates(value);
@@ -612,135 +212,87 @@ export const useGameStore = create<GameStore>()(
       achievements: [],
       collectibles: [],
       quests: [],
-      redeemCodes: [
-        {
-          id: "alpha-code-1",
-          code: "ALPHA2025",
-          name: "Pacote Alpha",
-          description: "Recompensas especiais para jogadores alpha",
-          rewards: {
-            xenocoins: 5000,
-            cash: 50,
-            collectibles: ["Ovo Alpha"],
-            accountPoints: 1000,
-          },
-          maxUses: 100,
-          currentUses: 0,
-          isActive: true,
-          createdBy: "system",
-          createdAt: new Date(),
-          usedBy: [],
-        },
-        {
-          id: "welcome-code-1",
-          code: "WELCOME",
-          name: "Pacote de Boas-vindas",
-          description: "Recompensas para novos jogadores",
-          rewards: {
-            xenocoins: 1000,
-            cash: 10,
-            accountPoints: 100,
-          },
-          maxUses: -1,
-          currentUses: 0,
-          isActive: true,
-          createdBy: "system",
-          createdAt: new Date(),
-          usedBy: [],
-        },
-      ],
+      redeemCodes: [],
       viewedUserId: null,
+      subscriptionId: null,
 
-      // Egg selection and hatching state
+      // Ship position state (default to center)
+      shipPosition: { x: 0, y: 0 },
+      setShipPosition: (position: ShipPosition) => {
+        set({ shipPosition: position });
+      },
+
+      // Egg hatching state
       selectedEggForHatching: null,
       isHatchingInProgress: false,
       hatchingEgg: null,
-
-      // Core actions
-      setUser: (user) => {
-        const state = get();
-
-        // If switching to a different user, clear egg hatching state
-        if (user && state.user && user.id !== state.user.id) {
-          set({
-            user,
-            selectedEggForHatching: null,
-            isHatchingInProgress: false,
-            hatchingEgg: null,
-          });
-        } else if (!user) {
-          // Logging out, clear all user-specific state and localStorage
-          if (state.user) {
-            // Clear user-specific localStorage items
-            localStorage.removeItem(`lastCheckin_${state.user.id}`);
-            localStorage.removeItem(`checkinStreak_${state.user.id}`);
-          }
-
-          set({
-            user: null,
-            pets: [],
-            inventory: [],
-            xenocoins: 0,
-            cash: 0,
-            notifications: [],
-            achievements: [],
-            collectibles: [],
-            selectedEggForHatching: null,
-            isHatchingInProgress: false,
-            hatchingEgg: null,
-          });
-        } else {
-          set({ user });
-        }
-      },
-      setActivePet: (pet) => set({ activePet: pet }),
-      setCurrentScreen: (screen) => set({ currentScreen: screen }),
-      setViewedUserId: (userId) => set({ viewedUserId: userId }),
-
-      // Egg selection and hatching actions
-      setSelectedEggForHatching: (eggData) =>
-        set({ selectedEggForHatching: eggData }),
+      setSelectedEggForHatching: (egg: any) => set({ selectedEggForHatching: egg }),
       clearSelectedEggForHatching: () => set({ selectedEggForHatching: null }),
-      setIsHatchingInProgress: (isHatching) =>
-        set({ isHatchingInProgress: isHatching }),
-      setHatchingEgg: (eggData) => {
-        const state = get();
-        if (!state.user) return;
-
-        set({
-          hatchingEgg: {
-            eggData,
-            startTime: new Date(),
-            userId: state.user.id,
-          },
+      setIsHatchingInProgress: (inProgress: boolean) => set({ isHatchingInProgress: inProgress }),
+      setHatchingEgg: (egg: any) => {
+        const hatchingStartTime = Date.now();
+        set({ 
+          hatchingEgg: { ...egg, hatchingStartTime },
         });
       },
       clearHatchingEgg: () => set({ hatchingEgg: null }),
       getHatchingTimeRemaining: () => {
         const state = get();
-        if (!state.hatchingEgg || !state.user) return 0;
-
-        // Check if the hatching egg belongs to the current user
-        if (state.hatchingEgg.userId !== state.user.id) {
-          // Clear invalid hatching state
-          get().clearHatchingEgg();
-          return 0;
-        }
-
-        const elapsedTime = Date.now() - state.hatchingEgg.startTime.getTime();
+        if (!state.hatchingEgg?.hatchingStartTime) return 0;
+        
         const hatchingDuration = 3 * 60 * 1000; // 3 minutes in milliseconds
-        return Math.max(0, hatchingDuration - elapsedTime);
+        const elapsed = Date.now() - state.hatchingEgg.hatchingStartTime;
+        return Math.max(0, hatchingDuration - elapsed);
+      },
+
+      // User management
+      setUser: (user: User | null) => set({ user }),
+      updateUser: (userData: Partial<User>) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, ...userData } });
+        }
+      },
+      initializeNewUser: (user: User) => {
+        set({
+          user,
+          activePet: null,
+          pets: [],
+          inventory: [],
+          xenocoins: 0,
+          cash: 0,
+          notifications: [],
+          achievements: [],
+          collectibles: [],
+          quests: [],
+          redeemCodes: [],
+          shipPosition: { x: 0, y: 0 }, // Reset ship position for new user
+        });
       },
 
       // Pet management
-      createPet: async (petData) => {
+      setActivePet: (pet: Pet | null) => set({ activePet: pet }),
+      addPet: (pet: Pet) => {
+        const pets = get().pets;
+        const updatedPets = [...pets, pet];
+        set({ pets: updatedPets, activePet: pet });
+      },
+      updatePet: (petId: string, updates: Partial<Pet>) => {
+        const { pets, activePet } = get();
+        const updatedPets = pets.map(pet => 
+          pet.id === petId ? { ...pet, ...updates } : pet
+        );
+        const updatedActivePet = activePet?.id === petId 
+          ? { ...activePet, ...updates } 
+          : activePet;
+        
+        set({ pets: updatedPets, activePet: updatedActivePet });
+      },
+      createPet: async (petData: Omit<Pet, "id" | "createdAt" | "updatedAt">) => {
         try {
           const newPet = await gameService.createPet(petData);
           if (newPet) {
-            set((state) => ({
-              pets: [...state.pets, newPet],
-              activePet: state.activePet || newPet,
-            }));
+            get().addPet(newPet);
           }
           return newPet;
         } catch (error) {
@@ -749,44 +301,20 @@ export const useGameStore = create<GameStore>()(
         }
       },
 
-      updatePetStats: async (petId, stats) => {
-        try {
-          const success = await gameService.updatePetStats(petId, stats);
-          if (success) {
-            set((state) => ({
-              pets: state.pets.map((pet) =>
-                pet.id === petId
-                  ? { ...pet, ...stats, updatedAt: new Date() }
-                  : pet,
-              ),
-              activePet:
-                state.activePet?.id === petId
-                  ? { ...state.activePet, ...stats, updatedAt: new Date() }
-                  : state.activePet,
-            }));
-          }
-          return success;
-        } catch (error) {
-          console.error("Error updating pet stats:", error);
-          return false;
-        }
-      },
-
       // Currency management
-      updateCurrency: async (type, amount) => {
-        const state = get();
-        if (!state.user) return false;
+      updateCurrency: async (type: "xenocoins" | "cash", amount: number) => {
+        const user = get().user;
+        if (!user) return false;
 
         try {
-          const success = await gameService.updateUserCurrency(
-            state.user.id,
-            type,
-            amount,
-          );
+          const success = await gameService.updateUserCurrency(user.id, type, amount);
           if (success) {
-            set((state) => ({
-              [type]: Math.max(0, state[type] + amount),
-            }));
+            const currentState = get();
+            if (type === "xenocoins") {
+              set({ xenocoins: Math.max(0, currentState.xenocoins + amount) });
+            } else {
+              set({ cash: Math.max(0, currentState.cash + amount) });
+            }
           }
           return success;
         } catch (error) {
@@ -794,567 +322,650 @@ export const useGameStore = create<GameStore>()(
           return false;
         }
       },
+      setCurrency: (xenocoins: number, cash: number) => set({ xenocoins, cash }),
 
       // Inventory management
-      addToInventory: async (item) => {
-        const state = get();
-        if (!state.user) return false;
+      addToInventory: async (item: Item, quantity = 1) => {
+        const user = get().user;
+        if (!user) return false;
 
         try {
-          const result = await gameService.addItemToInventory(
-            state.user.id,
-            item.id,
-          );
+          const result = await gameService.addItemToInventory(user.id, item.id, quantity);
           if (result) {
-            // Check if item already exists in inventory
-            const existingItemIndex = state.inventory.findIndex(
-              (invItem) => invItem.id === item.id && !invItem.isEquipped,
+            const currentInventory = get().inventory;
+            const existingItemIndex = currentInventory.findIndex(
+              invItem => invItem.id === item.id && !invItem.isEquipped
             );
 
             if (existingItemIndex >= 0) {
-              // Update quantity of existing item
-              set((state) => ({
-                inventory: state.inventory.map((invItem, index) =>
-                  index === existingItemIndex
-                    ? { ...invItem, quantity: invItem.quantity + item.quantity }
-                    : invItem,
-                ),
-              }));
+              const updatedInventory = [...currentInventory];
+              updatedInventory[existingItemIndex] = {
+                ...updatedInventory[existingItemIndex],
+                quantity: updatedInventory[existingItemIndex].quantity + quantity
+              };
+              set({ inventory: updatedInventory });
             } else {
-              // Add new item to inventory
-              set((state) => ({
-                inventory: [
-                  ...state.inventory,
-                  { ...item, inventoryId: result.id },
-                ],
-              }));
+              const newInventoryItem = {
+                ...item,
+                inventoryId: result.id,
+                quantity,
+                isEquipped: false
+              };
+              set({ inventory: [...currentInventory, newInventoryItem] });
             }
           }
           return !!result;
         } catch (error) {
-          console.error("Error adding item to inventory:", error);
+          console.error("Error adding to inventory:", error);
           return false;
         }
       },
-
-      removeFromInventory: async (inventoryItemId, quantity = 1) => {
-        const state = get();
-        if (!state.user) return false;
+      removeFromInventory: async (inventoryItemId: string, quantity = 1) => {
+        const user = get().user;
+        if (!user) return false;
 
         try {
-          const success = await gameService.removeItemFromInventory(
-            state.user.id,
-            inventoryItemId,
-            quantity,
-          );
+          const success = await gameService.removeItemFromInventory(user.id, inventoryItemId, quantity);
           if (success) {
-            set((state) => {
-              const itemIndex = state.inventory.findIndex(
-                (item) => (item.inventoryId || item.id) === inventoryItemId,
-              );
-
-              if (itemIndex >= 0) {
-                const item = state.inventory[itemIndex];
-                const newQuantity = item.quantity - quantity;
-
-                if (newQuantity <= 0) {
-                  // Remove item completely
-                  return {
-                    inventory: state.inventory.filter(
-                      (_, index) => index !== itemIndex,
-                    ),
-                  };
-                } else {
-                  // Update quantity
-                  return {
-                    inventory: state.inventory.map((invItem, index) =>
-                      index === itemIndex
-                        ? { ...invItem, quantity: newQuantity }
-                        : invItem,
-                    ),
-                  };
-                }
+            const currentInventory = get().inventory;
+            const itemIndex = currentInventory.findIndex(item => item.inventoryId === inventoryItemId);
+            
+            if (itemIndex >= 0) {
+              const updatedInventory = [...currentInventory];
+              const currentItem = updatedInventory[itemIndex];
+              
+              if (currentItem.quantity <= quantity) {
+                updatedInventory.splice(itemIndex, 1);
+              } else {
+                updatedInventory[itemIndex] = {
+                  ...currentItem,
+                  quantity: currentItem.quantity - quantity
+                };
               }
-              return state;
-            });
+              
+              set({ inventory: updatedInventory });
+            }
           }
           return success;
         } catch (error) {
-          console.error("Error removing item from inventory:", error);
+          console.error("Error removing from inventory:", error);
           return false;
         }
       },
-
-      useItem: async (inventoryItemId, petId) => {
-        const state = get();
-        const item = state.inventory.find(
-          (i) => (i.inventoryId || i.id) === inventoryItemId,
-        );
-        const pet = state.pets.find((p) => p.id === petId);
-
-        if (!item || !pet || !item.effects) return false;
+      useItem: async (inventoryItemId: string, petId: string) => {
+        const { inventory, pets, updatePet, removeFromInventory, addNotification } = get();
+        
+        const item = inventory.find(i => i.inventoryId === inventoryItemId);
+        const pet = pets.find(p => p.id === petId);
+        
+        if (!item || !pet) {
+          console.error("Item or pet not found");
+          return false;
+        }
 
         try {
           // Apply item effects to pet
-          const statUpdates: Partial<Pet> = {};
-          let hasValidEffects = false;
+          if (item.effects) {
+            const updates: Partial<Pet> = {};
+            let effectsApplied = false;
 
-          Object.entries(item.effects).forEach(([stat, value]) => {
-            if (typeof value === "number") {
-              switch (stat) {
-                case "health":
-                  statUpdates.health = Math.min(10, pet.health + value);
-                  hasValidEffects = true;
-                  break;
-                case "happiness":
-                  statUpdates.happiness = Math.min(10, pet.happiness + value);
-                  hasValidEffects = true;
-                  break;
-                case "hunger":
-                  statUpdates.hunger = Math.min(10, pet.hunger + value);
-                  hasValidEffects = true;
-                  break;
-                case "strength":
-                  statUpdates.strength = pet.strength + value;
-                  hasValidEffects = true;
-                  break;
-                case "dexterity":
-                  statUpdates.dexterity = pet.dexterity + value;
-                  hasValidEffects = true;
-                  break;
-                case "intelligence":
-                  statUpdates.intelligence = pet.intelligence + value;
-                  hasValidEffects = true;
-                  break;
-                case "speed":
-                  statUpdates.speed = pet.speed + value;
-                  hasValidEffects = true;
-                  break;
-                case "attack":
-                  statUpdates.attack = pet.attack + value;
-                  hasValidEffects = true;
-                  break;
-                case "defense":
-                  statUpdates.defense = pet.defense + value;
-                  hasValidEffects = true;
-                  break;
-                case "precision":
-                  statUpdates.precision = pet.precision + value;
-                  hasValidEffects = true;
-                  break;
-                case "evasion":
-                  statUpdates.evasion = pet.evasion + value;
-                  hasValidEffects = true;
-                  break;
-                case "luck":
-                  statUpdates.luck = pet.luck + value;
-                  hasValidEffects = true;
-                  break;
+            Object.entries(item.effects).forEach(([effect, value]) => {
+              if (typeof value === 'number') {
+                switch (effect) {
+                  case 'health':
+                    updates.health = Math.min(10, pet.health + value);
+                    effectsApplied = true;
+                    break;
+                  case 'happiness':
+                    updates.happiness = Math.min(10, pet.happiness + value);
+                    effectsApplied = true;
+                    break;
+                  case 'hunger':
+                    updates.hunger = Math.min(10, pet.hunger + value);
+                    effectsApplied = true;
+                    break;
+                  case 'strength':
+                    updates.strength = Math.max(0, pet.strength + value);
+                    effectsApplied = true;
+                    break;
+                  case 'dexterity':
+                    updates.dexterity = Math.max(0, pet.dexterity + value);
+                    effectsApplied = true;
+                    break;
+                  case 'intelligence':
+                    updates.intelligence = Math.max(0, pet.intelligence + value);
+                    effectsApplied = true;
+                    break;
+                  case 'speed':
+                    updates.speed = Math.max(0, pet.speed + value);
+                    effectsApplied = true;
+                    break;
+                  case 'attack':
+                    updates.attack = Math.max(0, pet.attack + value);
+                    effectsApplied = true;
+                    break;
+                  case 'defense':
+                    updates.defense = Math.max(0, pet.defense + value);
+                    effectsApplied = true;
+                    break;
+                  case 'precision':
+                    updates.precision = Math.max(0, pet.precision + value);
+                    effectsApplied = true;
+                    break;
+                  case 'evasion':
+                    updates.evasion = Math.max(0, pet.evasion + value);
+                    effectsApplied = true;
+                    break;
+                  case 'luck':
+                    updates.luck = Math.max(0, pet.luck + value);
+                    effectsApplied = true;
+                    break;
+                }
+              }
+            });
+
+            if (effectsApplied) {
+              updates.lastInteraction = new Date();
+              
+              // Update pet stats in database
+              const success = await gameService.updatePetStats(petId, updates);
+              if (success) {
+                updatePet(petId, updates);
+                
+                // Remove item from inventory
+                await removeFromInventory(inventoryItemId, 1);
+                
+                // Show success notification
+                const effectsList = Object.entries(item.effects)
+                  .map(([effect, value]) => `+${value} ${effect}`)
+                  .join(', ');
+                
+                addNotification({
+                  type: "success",
+                  title: "Item Usado!",
+                  message: `${item.name} foi usado em ${pet.name}. Efeitos: ${effectsList}`,
+                  isRead: false
+                });
+
+                // Play notification sound
+                playNotificationSound().catch(() => {});
+                
+                return true;
               }
             }
-          });
-
-          if (!hasValidEffects) {
-            get().addNotification({
-              type: "warning",
-              title: "Item sem efeito",
-              message: "Este item não tem efeitos aplicáveis ao seu pet.",
-              isRead: false,
-            });
-            return false;
           }
-
-          // Update pet stats
-          const updateSuccess = await get().updatePetStats(petId, statUpdates);
-          if (!updateSuccess) return false;
-
-          // Remove item from inventory
-          const removeSuccess = await get().removeFromInventory(
-            inventoryItemId,
-            1,
-          );
-          if (!removeSuccess) return false;
-
-          // Show success notification
-          get().addNotification({
-            type: "success",
-            title: "Item usado!",
-            message: `${item.name} foi usado em ${pet.name}. Efeitos aplicados com sucesso!`,
-            isRead: false,
-          });
-
-          return true;
+          
+          return false;
         } catch (error) {
           console.error("Error using item:", error);
-          get().addNotification({
-            type: "error",
-            title: "Erro",
-            message: "Ocorreu um erro ao usar o item.",
-            isRead: false,
-          });
           return false;
         }
       },
 
-      getUniversalItem: async (slug) => {
-        try {
-          // First try to get from local mock data
-          if (universalItems[slug]) {
-            return { ...universalItems[slug] };
-          }
+      // Notification management
+      addNotification: (notification: Omit<Notification, "id" | "createdAt">) => {
+        const newNotification: Notification = {
+          ...notification,
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
+        };
+        
+        set(state => ({
+          notifications: [newNotification, ...state.notifications].slice(0, 50)
+        }));
 
-          // Fallback to database lookup
-          const item = await gameService.getItemByName(slug.replace(/-/g, " "));
-          return item;
-        } catch (error) {
-          console.error("Error getting universal item:", error);
-          return null;
+        // Play notification sound for important notifications
+        if (notification.type === "success" || notification.type === "achievement") {
+          playNotificationSound().catch(() => {});
         }
       },
+      markNotificationAsRead: (notificationId: string) => {
+        set(state => ({
+          notifications: state.notifications.map(n =>
+            n.id === notificationId ? { ...n, isRead: true } : n
+          )
+        }));
+      },
+      markAllNotificationsAsRead: () => {
+        set(state => ({
+          notifications: state.notifications.map(n => ({ ...n, isRead: true }))
+        }));
+      },
+      deleteNotification: (notificationId: string) => {
+        set(state => ({
+          notifications: state.notifications.filter(n => n.id !== notificationId)
+        }));
+      },
+      clearNotifications: () => set({ notifications: [] }),
+
+      // Screen navigation
+      setCurrentScreen: (screen: string) => set({ currentScreen: screen }),
 
       // Store management
-      getAllStores: () => mockStores,
-
-      getStoreById: (storeId) => {
-        return mockStores.find((store) => store.id === storeId) || null;
+      getAllStores: () => {
+        // Mock store data - in a real app this would come from a database
+        return [
+          {
+            id: "woodland-store",
+            name: "Woodland General Store",
+            description: "Your one-stop shop for basic pet supplies and magical items",
+            type: "general",
+            npcName: "Merchant Elara",
+            npcImage: "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400",
+            npcDialogue: "Welcome, traveler! I have everything you need for your pet's journey.",
+            isOpen: true,
+            openHours: { start: 6, end: 22 },
+            inventory: [
+              {
+                id: "health-potion-1",
+                itemSlug: "health-potion",
+                basePrice: 50,
+                currentPrice: 50,
+                currency: "xenocoins",
+                stock: 25,
+                isOnSale: false,
+                saleDiscount: 0,
+                isLimited: false,
+                requirements: []
+              },
+              {
+                id: "magic-apple-1",
+                itemSlug: "magic-apple",
+                basePrice: 25,
+                currentPrice: 20,
+                currency: "xenocoins",
+                stock: 15,
+                isOnSale: true,
+                saleDiscount: 20,
+                isLimited: false,
+                requirements: []
+              },
+              {
+                id: "happiness-toy-1",
+                itemSlug: "happiness-toy",
+                basePrice: 30,
+                currentPrice: 30,
+                currency: "xenocoins",
+                stock: 10,
+                isOnSale: false,
+                saleDiscount: 0,
+                isLimited: false,
+                requirements: []
+              }
+            ],
+            specialOffers: [
+              {
+                id: "weekend-special",
+                name: "Weekend Health Bundle",
+                originalPrice: 150,
+                salePrice: 100,
+                currency: "xenocoins",
+                expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+              }
+            ],
+            reputation: 85,
+            discountLevel: 2
+          },
+          {
+            id: "premium-boutique",
+            name: "Premium Pet Boutique",
+            description: "Exclusive high-end items for the most discerning pet owners",
+            type: "premium",
+            npcName: "Lady Vivienne",
+            npcImage: "https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=400",
+            npcDialogue: "Only the finest items for pets of distinction. What catches your eye today?",
+            isOpen: true,
+            openHours: { start: 10, end: 20 },
+            inventory: [
+              {
+                id: "dragon-scale-armor-1",
+                itemSlug: "dragon-scale-armor",
+                basePrice: 1000,
+                currentPrice: 1000,
+                currency: "xenocoins",
+                stock: 3,
+                isOnSale: false,
+                saleDiscount: 0,
+                isLimited: true,
+                requirements: [
+                  {
+                    type: "level",
+                    value: 5,
+                    description: "Pet must be level 5 or higher"
+                  }
+                ]
+              },
+              {
+                id: "king-egg-1",
+                itemSlug: "king-egg",
+                basePrice: 10000,
+                currentPrice: 10000,
+                currency: "cash",
+                stock: 1,
+                isOnSale: false,
+                saleDiscount: 0,
+                isLimited: true,
+                requirements: [
+                  {
+                    type: "achievement",
+                    value: "wealthy",
+                    description: "Must have 'Wealthy' achievement"
+                  }
+                ]
+              }
+            ],
+            specialOffers: [],
+            reputation: 95,
+            discountLevel: 3
+          }
+        ];
       },
-
-      getStoresByType: (type) => {
-        return mockStores.filter((store) => store.type === type);
+      getStoresByType: (type: string) => {
+        const allStores = get().getAllStores();
+        return allStores.filter(store => store.type === type);
       },
-
-      purchaseStoreItem: async (storeId, itemId, quantity = 1) => {
-        const state = get();
-        const store = get().getStoreById(storeId);
-
-        if (!store || !state.user) {
+      purchaseStoreItem: async (storeId: string, itemId: string, quantity: number) => {
+        const { getAllStores, getUniversalItem, updateCurrency, addToInventory, addNotification } = get();
+        const stores = getAllStores();
+        const store = stores.find(s => s.id === storeId);
+        
+        if (!store) {
           return {
             success: false,
-            message: "Store or user not found",
+            message: "Store not found",
             totalCost: 0,
-            currency: "xenocoins",
-            newBalance: 0,
+            currency: "xenocoins" as const,
+            newBalance: 0
           };
         }
 
-        const storeItem = store.inventory.find((item) => item.id === itemId);
+        const storeItem = store.inventory.find(item => item.id === itemId);
         if (!storeItem) {
           return {
             success: false,
             message: "Item not found in store",
             totalCost: 0,
-            currency: "xenocoins",
-            newBalance: 0,
+            currency: "xenocoins" as const,
+            newBalance: 0
           };
         }
 
-        // Check stock
         if (storeItem.stock < quantity) {
           return {
             success: false,
-            message: `Insufficient stock. Only ${storeItem.stock} available.`,
+            message: `Not enough stock. Only ${storeItem.stock} available.`,
             totalCost: 0,
             currency: storeItem.currency,
-            newBalance: state[storeItem.currency],
+            newBalance: 0
           };
         }
 
-        // Check requirements
-        if (storeItem.requirements) {
-          for (const req of storeItem.requirements) {
-            if (req.type === "level" && state.activePet) {
-              if (state.activePet.level < req.value) {
-                return {
-                  success: false,
-                  message: req.description,
-                  totalCost: 0,
-                  currency: storeItem.currency,
-                  newBalance: state[storeItem.currency],
-                };
-              }
-            }
-            // Add other requirement checks as needed
-          }
-        }
-
         const totalCost = storeItem.currentPrice * quantity;
-        const currentBalance = state[storeItem.currency];
+        const currentBalance = storeItem.currency === "xenocoins" ? get().xenocoins : get().cash;
 
-        // Check if user has enough currency
         if (currentBalance < totalCost) {
           return {
             success: false,
-            message: `Insufficient ${storeItem.currency}. Need ${totalCost}, have ${currentBalance}.`,
+            message: `Insufficient ${storeItem.currency}. You need ${totalCost.toLocaleString()} but have ${currentBalance.toLocaleString()}.`,
             totalCost,
             currency: storeItem.currency,
-            newBalance: currentBalance,
+            newBalance: currentBalance
           };
         }
 
         try {
           // Get the universal item
-          const universalItem = await get().getUniversalItem(
-            storeItem.itemSlug,
-          );
+          const universalItem = await getUniversalItem(storeItem.itemSlug);
           if (!universalItem) {
             return {
               success: false,
               message: "Item data not found",
               totalCost,
               currency: storeItem.currency,
-              newBalance: currentBalance,
+              newBalance: currentBalance
             };
           }
 
           // Deduct currency
-          const currencySuccess = await get().updateCurrency(
-            storeItem.currency,
-            -totalCost,
-          );
+          const currencySuccess = await updateCurrency(storeItem.currency, -totalCost);
           if (!currencySuccess) {
             return {
               success: false,
               message: "Failed to process payment",
               totalCost,
               currency: storeItem.currency,
-              newBalance: currentBalance,
+              newBalance: currentBalance
             };
           }
 
           // Add item to inventory
-          const itemToAdd = { ...universalItem, quantity };
-          const inventorySuccess = await get().addToInventory(itemToAdd);
+          const inventorySuccess = await addToInventory(universalItem, quantity);
           if (!inventorySuccess) {
-            // Refund currency if inventory addition failed
-            await get().updateCurrency(storeItem.currency, totalCost);
+            // Rollback currency change
+            await updateCurrency(storeItem.currency, totalCost);
             return {
               success: false,
               message: "Failed to add item to inventory",
               totalCost,
               currency: storeItem.currency,
-              newBalance: currentBalance,
+              newBalance: currentBalance
             };
           }
 
-          // Update store stock
-          const storeIndex = mockStores.findIndex((s) => s.id === storeId);
-          if (storeIndex >= 0) {
-            const itemIndex = mockStores[storeIndex].inventory.findIndex(
-              (i) => i.id === itemId,
-            );
-            if (itemIndex >= 0) {
-              mockStores[storeIndex].inventory[itemIndex].stock -= quantity;
-            }
-          }
+          // Update store stock (in a real app, this would be persisted)
+          storeItem.stock -= quantity;
 
           const newBalance = currentBalance - totalCost;
 
-          // Add success notification
-          get().addNotification({
+          addNotification({
             type: "success",
             title: "Purchase Successful!",
-            message: `Purchased ${quantity}x ${universalItem.name} for ${totalCost} ${storeItem.currency}`,
-            isRead: false,
+            message: `You bought ${quantity}x ${universalItem.name} for ${totalCost.toLocaleString()} ${storeItem.currency}.`,
+            isRead: false
           });
 
           return {
             success: true,
-            message: "Purchase completed successfully",
-            item: universalItem,
+            message: `Successfully purchased ${quantity}x ${universalItem.name}!`,
             totalCost,
             currency: storeItem.currency,
-            newBalance,
+            newBalance
           };
         } catch (error) {
-          console.error("Error during purchase:", error);
+          console.error("Purchase error:", error);
           return {
             success: false,
-            message: "An error occurred during purchase",
+            message: "An unexpected error occurred during purchase",
             totalCost,
             currency: storeItem.currency,
-            newBalance: currentBalance,
+            newBalance: currentBalance
           };
         }
       },
-
-      getStoreInventory: (storeId) => {
-        const store = get().getStoreById(storeId);
-        return store ? store.inventory : [];
-      },
-
-      restockStore: async (storeId) => {
-        const store = get().getStoreById(storeId);
-        if (!store) return false;
-
-        try {
-          const storeIndex = mockStores.findIndex((s) => s.id === storeId);
-          if (storeIndex >= 0) {
-            // Restock items based on restock rate
-            mockStores[storeIndex].inventory.forEach((item) => {
-              const newStock = Math.min(
-                item.maxStock,
-                item.stock + item.restockRate,
-              );
-              item.stock = newStock;
-              item.lastRestocked = new Date();
-            });
-
-            // Update restock schedule
-            const now = new Date();
-            mockStores[storeIndex].restockSchedule.lastRestock = now;
-            mockStores[storeIndex].restockSchedule.nextRestock = new Date(
-              now.getTime() + store.restockSchedule.interval * 60 * 60 * 1000,
-            );
-
-            return true;
+      getUniversalItem: async (slug: string) => {
+        // Mock universal items - in a real app this would come from a database
+        const universalItems: Record<string, Item> = {
+          "health-potion": {
+            id: "health-potion-universal",
+            slug: "health-potion",
+            name: "Health Potion",
+            description: "A magical elixir that restores 5 health points instantly",
+            type: "Potion",
+            rarity: "Common",
+            price: 50,
+            currency: "xenocoins",
+            effects: { health: 5 },
+            dailyLimit: 10,
+            quantity: 1,
+            createdAt: new Date()
+          },
+          "magic-apple": {
+            id: "magic-apple-universal",
+            slug: "magic-apple",
+            name: "Magic Apple",
+            description: "A mystical fruit that restores hunger and provides energy",
+            type: "Food",
+            rarity: "Uncommon",
+            price: 25,
+            currency: "xenocoins",
+            effects: { hunger: 3, happiness: 1 },
+            quantity: 1,
+            createdAt: new Date()
+          },
+          "happiness-toy": {
+            id: "happiness-toy-universal",
+            slug: "happiness-toy",
+            name: "Happiness Toy",
+            description: "A colorful toy that brings joy to pets",
+            type: "Special",
+            rarity: "Common",
+            price: 30,
+            currency: "xenocoins",
+            effects: { happiness: 2 },
+            dailyLimit: 5,
+            quantity: 1,
+            createdAt: new Date()
+          },
+          "dragon-scale-armor": {
+            id: "dragon-scale-armor-universal",
+            slug: "dragon-scale-armor",
+            name: "Dragon Scale Armor",
+            description: "Legendary armor forged from ancient dragon scales",
+            type: "Equipment",
+            rarity: "Epic",
+            price: 1000,
+            currency: "xenocoins",
+            effects: { defense: 10 },
+            slot: "torso",
+            quantity: 1,
+            createdAt: new Date()
+          },
+          "king-egg": {
+            id: "king-egg-universal",
+            slug: "king-egg",
+            name: "King Egg",
+            description: "An extremely rare egg that transforms pet appearance",
+            type: "Style",
+            rarity: "Unique",
+            price: 10000,
+            currency: "cash",
+            effects: {},
+            quantity: 1,
+            createdAt: new Date()
           }
-          return false;
-        } catch (error) {
-          console.error("Error restocking store:", error);
-          return false;
-        }
-      },
-
-      // Notifications
-      addNotification: (notification) => {
-        const newNotification: Notification = {
-          ...notification,
-          id: crypto.randomUUID(),
-          createdAt: new Date(),
         };
 
-        set((state) => ({
-          notifications: [newNotification, ...state.notifications].slice(0, 50), // Keep only last 50
-        }));
+        return universalItems[slug] || null;
+      },
+      restockStore: async (storeId: string) => {
+        const { getAllStores, addNotification } = get();
+        const stores = getAllStores();
+        const store = stores.find(s => s.id === storeId);
+        
+        if (!store) return false;
 
-        // Play notification sound
-        try {
-          playNotificationSound();
-        } catch (error) {
-          console.error("Error playing notification sound:", error);
+        // Restock all items (in a real app, this would be more sophisticated)
+        store.inventory.forEach(item => {
+          item.stock = Math.min(item.stock + 10, 50); // Add 10, max 50
+        });
+
+        addNotification({
+          type: "info",
+          title: "Store Restocked",
+          message: `${store.name} has been restocked with fresh inventory!`,
+          isRead: false
+        });
+
+        return true;
+      },
+
+      // Achievement management
+      checkAchievements: () => {
+        // Implementation for checking and unlocking achievements
+        // This would typically check various game conditions
+      },
+      unlockAchievement: (achievementId: string) => {
+        const { achievements, addNotification } = get();
+        const achievement = achievements.find(a => a.id === achievementId);
+        
+        if (achievement && !achievement.isUnlocked) {
+          const updatedAchievements = achievements.map(a =>
+            a.id === achievementId 
+              ? { ...a, isUnlocked: true, unlockedAt: new Date() }
+              : a
+          );
+          
+          set({ achievements: updatedAchievements });
+          
+          addNotification({
+            type: "achievement",
+            title: "Achievement Unlocked!",
+            message: `You've earned: ${achievement.name}`,
+            isRead: false
+          });
         }
       },
 
-      markNotificationAsRead: (notificationId) => {
-        set((state) => ({
-          notifications: state.notifications.map((notification) =>
-            notification.id === notificationId
-              ? { ...notification, isRead: true }
-              : notification,
-          ),
-        }));
-      },
-
-      markAllNotificationsAsRead: () => {
-        set((state) => ({
-          notifications: state.notifications.map((notification) => ({
-            ...notification,
-            isRead: true,
-          })),
-        }));
-      },
-
-      deleteNotification: (notificationId) => {
-        set((state) => ({
-          notifications: state.notifications.filter(
-            (n) => n.id !== notificationId,
-          ),
-        }));
-      },
-
-      clearNotifications: () => {
-        set({ notifications: [] });
-      },
-
-      // Achievements and collectibles
-      loadUserAchievements: async (userId) => {
-        try {
-          const userIdToUse = userId || get().user?.id;
-          if (!userIdToUse) return;
-
-          const achievements =
-            await gameService.getUserAchievements(userIdToUse);
-          set({ achievements });
-        } catch (error) {
-          console.error("Error loading achievements:", error);
-        }
-      },
-
-      loadUserCollectibles: async (userId) => {
-        try {
-          const userIdToUse = userId || get().user?.id;
-          if (!userIdToUse) return;
-
-          const collectibles =
-            await gameService.getUserCollectedCollectibles(userIdToUse);
-          set({ collectibles });
-        } catch (error) {
-          console.error("Error loading collectibles:", error);
-        }
-      },
-
+      // Collectible management
       getAllCollectibles: () => {
-        // Mock collectibles data - in a real app, this would come from your database
+        // Mock collectibles data
         return [
           {
-            id: "1",
-            name: "Ovo Alpha",
-            type: "egg",
-            rarity: "Unique",
-            description:
-              "Distribuído através de código para jogadores do alpha",
-            isCollected: false,
-            accountPoints: 100,
-            obtainMethod: "Redeem code",
+            id: "starter-stone",
+            name: "Starter Stone",
+            type: "stone" as const,
+            rarity: "Common" as const,
+            description: "A simple stone marking the beginning of your journey",
+            isCollected: true,
+            collectedAt: new Date(),
+            accountPoints: 1,
+            obtainMethod: "Starting gift"
           },
           {
-            id: "2",
-            name: "Peixe Dourado",
-            type: "fish",
-            rarity: "Epic",
-            description: "Um peixe lendário dos oceanos profundos",
+            id: "forest-leaf",
+            name: "Forest Leaf",
+            type: "artwork" as const,
+            rarity: "Common" as const,
+            description: "A beautiful leaf from the Mystic Forest",
             isCollected: false,
-            accountPoints: 50,
-            obtainMethod: "Fishing",
+            accountPoints: 1,
+            obtainMethod: "Found in Mystic Forest"
           },
-        ] as Collectible[];
+          {
+            id: "alpha-egg",
+            name: "Ovo Alpha",
+            type: "egg" as const,
+            rarity: "Unique" as const,
+            description: "Distribuído através de código para jogadores do alpha",
+            isCollected: false,
+            accountPoints: 10,
+            obtainMethod: "Alpha player code"
+          }
+        ];
       },
-
-      getCollectiblesByType: (type) => {
-        return get()
-          .getAllCollectibles()
-          .filter((c) => c.type === type);
+      getCollectiblesByType: (type: "egg" | "fish" | "gem" | "stamp" | "stone" | "artwork") => {
+        return get().getAllCollectibles().filter(c => c.type === type);
       },
-
       getCollectedCollectibles: () => {
-        return get().collectibles.filter((c) => c.isCollected);
+        return get().getAllCollectibles().filter(c => c.isCollected);
       },
-
       getTotalCollectiblePoints: () => {
-        return get()
-          .getCollectedCollectibles()
-          .reduce((total, c) => total + c.accountPoints, 0);
+        return get().getCollectedCollectibles().reduce((total, c) => total + c.accountPoints, 0);
       },
-
-      collectItem: async (collectibleName) => {
-        const state = get();
-        if (!state.user) return false;
+      collectItem: async (collectibleName: string) => {
+        const user = get().user;
+        if (!user) return false;
 
         try {
-          const success = await gameService.addUserCollectible(
-            state.user.id,
-            collectibleName,
-          );
+          const success = await gameService.addUserCollectible(user.id, collectibleName);
           if (success) {
-            // Reload collectibles
-            await get().loadUserCollectibles();
-
-            get().addNotification({
-              type: "success",
-              title: "Collectible Obtained!",
-              message: `You collected: ${collectibleName}`,
-              isRead: false,
-            });
+            // Update local state
+            const collectibles = get().getAllCollectibles();
+            const collectible = collectibles.find(c => c.name === collectibleName);
+            if (collectible) {
+              collectible.isCollected = true;
+              collectible.collectedAt = new Date();
+            }
           }
           return success;
         } catch (error) {
@@ -1363,8 +974,185 @@ export const useGameStore = create<GameStore>()(
         }
       },
 
+      // Daily check-in
+      dailyCheckin: () => {
+        const user = get().user;
+        if (!user) return;
+
+        const today = new Date().toDateString();
+        const lastCheckin = localStorage.getItem(`lastCheckin_${user.id}`);
+        
+        if (lastCheckin === today) return;
+
+        localStorage.setItem(`lastCheckin_${user.id}`, today);
+        
+        // Award daily bonus
+        get().updateCurrency("xenocoins", 100);
+        
+        get().addNotification({
+          type: "success",
+          title: "Daily Check-in!",
+          message: "You received 100 Xenocoins for checking in today!",
+          isRead: false
+        });
+      },
+      canClaimDailyCheckin: () => {
+        const user = get().user;
+        if (!user) return false;
+
+        const today = new Date().toDateString();
+        const lastCheckin = localStorage.getItem(`lastCheckin_${user.id}`);
+        
+        return lastCheckin !== today;
+      },
+      getDailyCheckinStreak: () => {
+        const user = get().user;
+        if (!user) return 0;
+
+        // Simple streak calculation - in a real app this would be more sophisticated
+        const streak = parseInt(localStorage.getItem(`checkinStreak_${user.id}`) || "0");
+        return streak;
+      },
+      canClaimWeeklyReward: () => {
+        return get().getDailyCheckinStreak() >= 7;
+      },
+      claimWeeklyReward: () => {
+        const user = get().user;
+        if (!user || !get().canClaimWeeklyReward()) return;
+
+        get().updateCurrency("cash", 1);
+        localStorage.setItem(`checkinStreak_${user.id}`, "0");
+        
+        get().addNotification({
+          type: "success",
+          title: "Weekly Reward!",
+          message: "You received 1 Cash for your 7-day streak!",
+          isRead: false
+        });
+      },
+
+      // Redeem codes
+      getAllRedeemCodes: () => {
+        // Mock redeem codes - in a real app this would come from database
+        return [
+          {
+            id: "alpha-code-1",
+            code: "ALPHA2025",
+            name: "Alpha Player Reward",
+            description: "Special reward for alpha testers",
+            rewards: {
+              xenocoins: 1000,
+              cash: 5,
+              collectibles: ["Ovo Alpha"],
+              accountPoints: 100
+            },
+            maxUses: 100,
+            currentUses: 25,
+            isActive: true,
+            createdBy: "admin",
+            createdAt: new Date("2025-01-01"),
+            usedBy: []
+          }
+        ];
+      },
+      getActiveRedeemCodes: () => {
+        return get().getAllRedeemCodes().filter(code => 
+          code.isActive && 
+          (code.maxUses === -1 || code.currentUses < code.maxUses) &&
+          (!code.expiresAt || code.expiresAt > new Date())
+        );
+      },
+      createRedeemCode: (codeData: Omit<RedeemCode, "id" | "createdAt" | "currentUses" | "usedBy">) => {
+        const newCode: RedeemCode = {
+          ...codeData,
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
+          currentUses: 0,
+          usedBy: []
+        };
+        
+        const codes = get().getAllRedeemCodes();
+        // In a real app, this would be saved to database
+        console.log("Created new redeem code:", newCode);
+      },
+      updateRedeemCode: (codeId: string, updates: Partial<RedeemCode>) => {
+        // In a real app, this would update the database
+        console.log("Updated redeem code:", codeId, updates);
+      },
+      deleteRedeemCode: (codeId: string) => {
+        // In a real app, this would delete from database
+        console.log("Deleted redeem code:", codeId);
+      },
+      redeemCode: async (code: string) => {
+        const user = get().user;
+        if (!user) {
+          return { success: false, message: "User not logged in" };
+        }
+
+        const redeemCodes = get().getActiveRedeemCodes();
+        const redeemCode = redeemCodes.find(c => c.code.toLowerCase() === code.toLowerCase());
+        
+        if (!redeemCode) {
+          return { success: false, message: "Código inválido ou expirado" };
+        }
+
+        if (redeemCode.usedBy.includes(user.id)) {
+          return { success: false, message: "Você já resgatou este código" };
+        }
+
+        if (redeemCode.maxUses !== -1 && redeemCode.currentUses >= redeemCode.maxUses) {
+          return { success: false, message: "Este código atingiu o limite de usos" };
+        }
+
+        try {
+          // Apply rewards
+          const { rewards } = redeemCode;
+          let rewardMessages: string[] = [];
+
+          if (rewards.xenocoins) {
+            await get().updateCurrency("xenocoins", rewards.xenocoins);
+            rewardMessages.push(`${rewards.xenocoins} Xenocoins`);
+          }
+
+          if (rewards.cash) {
+            await get().updateCurrency("cash", rewards.cash);
+            rewardMessages.push(`${rewards.cash} Cash`);
+          }
+
+          if (rewards.accountPoints) {
+            get().updateUser({ accountScore: (user.accountScore || 0) + rewards.accountPoints });
+            rewardMessages.push(`${rewards.accountPoints} pontos de conta`);
+          }
+
+          if (rewards.collectibles) {
+            for (const collectibleName of rewards.collectibles) {
+              await get().collectItem(collectibleName);
+              rewardMessages.push(`Colecionável: ${collectibleName}`);
+            }
+          }
+
+          // Mark code as used (in a real app, this would update the database)
+          redeemCode.usedBy.push(user.id);
+          redeemCode.currentUses++;
+
+          const message = `Código resgatado com sucesso! Você recebeu: ${rewardMessages.join(", ")}`;
+          
+          get().addNotification({
+            type: "success",
+            title: "Código Resgatado!",
+            message,
+            isRead: false
+          });
+
+          return { success: true, message };
+        } catch (error) {
+          console.error("Error redeeming code:", error);
+          return { success: false, message: "Erro ao resgatar código. Tente novamente." };
+        }
+      },
+
       // Player search and profiles
-      searchPlayers: async (query) => {
+      searchPlayers: async (query: string) => {
         try {
           return await gameService.searchPlayers(query);
         } catch (error) {
@@ -1372,306 +1160,102 @@ export const useGameStore = create<GameStore>()(
           return [];
         }
       },
-
-      getPlayerProfile: async (userId) => {
+      getPlayerProfile: async (userId: string) => {
         try {
           return await gameService.getPlayerProfile(userId);
         } catch (error) {
-          console.error("Error getting player profile:", error);
+          console.error("Error fetching player profile:", error);
           return null;
         }
       },
+      setViewedUserId: (userId: string | null) => set({ viewedUserId: userId }),
 
-      // Redeem codes
-      getAllRedeemCodes: () => get().redeemCodes,
-
-      getActiveRedeemCodes: () => {
-        const now = new Date();
-        return get().redeemCodes.filter(
-          (code) =>
-            code.isActive &&
-            (code.maxUses === -1 || code.currentUses < code.maxUses) &&
-            (!code.expiresAt || code.expiresAt > now),
-        );
-      },
-
-      createRedeemCode: (codeData) => {
-        const newCode: RedeemCode = {
-          ...codeData,
-          id: crypto.randomUUID(),
-          currentUses: 0,
-          usedBy: [],
-          createdAt: new Date(),
-        };
-
-        set((state) => ({
-          redeemCodes: [...state.redeemCodes, newCode],
-        }));
-      },
-
-      updateRedeemCode: (codeId, updates) => {
-        set((state) => ({
-          redeemCodes: state.redeemCodes.map((code) =>
-            code.id === codeId ? { ...code, ...updates } : code,
-          ),
-        }));
-      },
-
-      deleteRedeemCode: (codeId) => {
-        set((state) => ({
-          redeemCodes: state.redeemCodes.filter((code) => code.id !== codeId),
-        }));
-      },
-
-      redeemCode: async (code) => {
-        const state = get();
-        if (!state.user) {
-          return { success: false, message: "User not logged in" };
-        }
-
-        const redeemCode = state.redeemCodes.find(
-          (rc) => rc.code.toUpperCase() === code.toUpperCase() && rc.isActive,
-        );
-
-        if (!redeemCode) {
-          return { success: false, message: "Código inválido ou expirado" };
-        }
-
-        // Check if user already used this code
-        if (redeemCode.usedBy.includes(state.user.id)) {
-          return { success: false, message: "Você já resgatou este código" };
-        }
-
-        // Check usage limits
-        if (
-          redeemCode.maxUses !== -1 &&
-          redeemCode.currentUses >= redeemCode.maxUses
-        ) {
-          return {
-            success: false,
-            message: "Este código atingiu o limite de usos",
-          };
-        }
-
-        // Check expiration
-        if (redeemCode.expiresAt && redeemCode.expiresAt < new Date()) {
-          return { success: false, message: "Este código expirou" };
-        }
-
-        try {
-          // Apply rewards
-          const rewards = redeemCode.rewards;
-          let rewardMessages: string[] = [];
-
-          // Currency rewards
-          if (rewards.xenocoins && rewards.xenocoins > 0) {
-            await get().updateCurrency("xenocoins", rewards.xenocoins);
-            rewardMessages.push(`${rewards.xenocoins} Xenocoins`);
-          }
-
-          if (rewards.cash && rewards.cash > 0) {
-            await get().updateCurrency("cash", rewards.cash);
-            rewardMessages.push(`${rewards.cash} Cash`);
-          }
-
-          // Account points
-          if (rewards.accountPoints && rewards.accountPoints > 0) {
-            // Update account score (this would be handled by the backend in a real app)
-            if (state.user) {
-              const updatedUser = {
-                ...state.user,
-                accountScore: state.user.accountScore + rewards.accountPoints,
-              };
-              set({ user: updatedUser });
-              rewardMessages.push(`${rewards.accountPoints} pontos de conta`);
-            }
-          }
-
-          // Collectibles
-          if (rewards.collectibles && rewards.collectibles.length > 0) {
-            for (const collectibleName of rewards.collectibles) {
-              await get().collectItem(collectibleName);
-              rewardMessages.push(`Colecionável: ${collectibleName}`);
-            }
-          }
-
-          // Items
-          if (rewards.items && rewards.items.length > 0) {
-            for (const itemSlug of rewards.items) {
-              const item = await get().getUniversalItem(itemSlug);
-              if (item) {
-                await get().addToInventory(item);
-                rewardMessages.push(`Item: ${item.name}`);
-              }
-            }
-          }
-
-          // Update code usage
-          get().updateRedeemCode(redeemCode.id, {
-            currentUses: redeemCode.currentUses + 1,
-            usedBy: [...redeemCode.usedBy, state.user.id],
-          });
-
-          const message = `Código resgatado com sucesso! Recompensas: ${rewardMessages.join(", ")}`;
-
-          get().addNotification({
-            type: "success",
-            title: "Código Resgatado!",
-            message,
-            isRead: false,
-          });
-
-          return { success: true, message };
-        } catch (error) {
-          console.error("Error redeeming code:", error);
-          return {
-            success: false,
-            message: "Erro ao resgatar código. Tente novamente.",
-          };
-        }
-      },
-
-      // Daily check-in system
-      dailyCheckin: () => {
-        const state = get();
-        if (!state.user || !get().canClaimDailyCheckin()) return;
-
-        // Award daily check-in rewards
-        get().updateCurrency("xenocoins", 50);
-
-        // Update last check-in date with user ID (in a real app, this would be stored in the backend)
-        const today = new Date().toDateString();
-        localStorage.setItem(`lastCheckin_${state.user.id}`, today);
-
-        get().addNotification({
-          type: "success",
-          title: "Check-in Diário!",
-          message: "Você recebeu 50 Xenocoins pelo check-in diário!",
-          isRead: false,
-        });
-      },
-
-      canClaimDailyCheckin: () => {
-        const state = get();
-        if (!state.user) return false;
-
-        const lastCheckin = localStorage.getItem(
-          `lastCheckin_${state.user.id}`,
-        );
-        const today = new Date().toDateString();
-        return lastCheckin !== today;
-      },
-
-      getDailyCheckinStreak: () => {
-        const state = get();
-        if (!state.user) return 0;
-
-        // In a real app, this would be stored in the backend
-        const streak = localStorage.getItem(`checkinStreak_${state.user.id}`);
-        return streak ? parseInt(streak, 10) : 0;
-      },
-
-      canClaimWeeklyReward: () => {
-        const streak = get().getDailyCheckinStreak();
-        return streak >= 7 && streak % 7 === 0;
-      },
-
-      claimWeeklyReward: () => {
-        if (!get().canClaimWeeklyReward()) return;
-
-        get().updateCurrency("cash", 2);
-
-        get().addNotification({
-          type: "success",
-          title: "Recompensa Semanal!",
-          message: "Você recebeu 2 Cash pela sequência semanal!",
-          isRead: false,
-        });
-      },
-
-      // Data loading and synchronization
-      initializeNewUser: (userData) => {
-        set({
-          user: userData,
-          pets: [],
-          inventory: [],
-          xenocoins: 0,
-          cash: 0,
-          notifications: [],
-          achievements: [],
-          collectibles: [],
-          // Clear egg hatching state for new user
-          selectedEggForHatching: null,
-          isHatchingInProgress: false,
-          hatchingEgg: null,
-        });
-      },
-
-      loadUserData: async (userId) => {
+      // Data loading and real-time updates
+      loadUserData: async (userId: string) => {
         try {
           // Load pets
           const pets = await gameService.getUserPets(userId);
-          const activePet = pets.find((pet) => pet.isActive) || pets[0] || null;
-
+          const activePet = pets.find(pet => pet.isActive) || pets[0] || null;
+          
           // Load inventory
           const inventory = await gameService.getUserInventory(userId);
-
+          
           // Load currency
           const currency = await gameService.getUserCurrency(userId);
-
+          
           // Load notifications
           const notifications = await gameService.getUserNotifications(userId);
-
+          
           // Load achievements
           const achievements = await gameService.getUserAchievements(userId);
 
-          // Load collectibles
-          const collectibles =
-            await gameService.getUserCollectedCollectibles(userId);
-
-          // Clear egg hatching state if it belongs to a different user
-          const state = get();
-          let updateData: any = {
+          set({
             pets,
             activePet,
             inventory,
             xenocoins: currency?.xenocoins || 0,
             cash: currency?.cash || 0,
             notifications,
-            achievements,
-            collectibles,
-          };
-
-          if (state.hatchingEgg && state.hatchingEgg.userId !== userId) {
-            updateData.selectedEggForHatching = null;
-            updateData.isHatchingInProgress = false;
-            updateData.hatchingEgg = null;
-          }
-
-          set(updateData);
+            achievements
+          });
         } catch (error) {
           console.error("Error loading user data:", error);
         }
       },
-
-      subscribeToRealtimeUpdates: () => {
-        const state = get();
-        if (!state.user) return;
-
-        // In a real app, this would set up real-time subscriptions
-        console.log(
-          "Subscribing to real-time updates for user:",
-          state.user.id,
-        );
+      loadUserAchievements: async (userId: string) => {
+        try {
+          const achievements = await gameService.getUserAchievements(userId);
+          set({ achievements });
+        } catch (error) {
+          console.error("Error loading user achievements:", error);
+        }
       },
+      loadUserCollectibles: async (userId: string) => {
+        try {
+          const collectibles = await gameService.getUserCollectedCollectibles(userId);
+          // Update collectibles state with collected items
+          // This would be more sophisticated in a real app
+          console.log("Loaded user collectibles:", collectibles);
+        } catch (error) {
+          console.error("Error loading user collectibles:", error);
+        }
+      },
+      subscribeToRealtimeUpdates: () => {
+        const user = get().user;
+        if (!user || get().subscriptionId) return;
 
+        const subscriptionId = gameService.subscribeToUserData(user.id, (data) => {
+          // Handle real-time updates
+          console.log("Real-time update:", data);
+          
+          switch (data.type) {
+            case "pets":
+              get().loadUserData(user.id);
+              break;
+            case "inventory":
+              get().loadUserData(user.id);
+              break;
+            case "currency":
+              get().loadUserData(user.id);
+              break;
+            case "notifications":
+              get().loadUserData(user.id);
+              break;
+          }
+        });
+
+        set({ subscriptionId });
+      },
       unsubscribeFromRealtimeUpdates: () => {
-        // In a real app, this would clean up real-time subscriptions
-        console.log("Unsubscribing from real-time updates");
+        const subscriptionId = get().subscriptionId;
+        if (subscriptionId) {
+          gameService.unsubscribe(subscriptionId);
+          set({ subscriptionId: null });
+        }
       },
     }),
     {
-      name: "xenopets-game-store",
+      name: "xenopets-game",
       partialize: (state) => ({
         user: state.user,
         activePet: state.activePet,
@@ -1684,45 +1268,28 @@ export const useGameStore = create<GameStore>()(
         currentScreen: state.currentScreen,
         achievements: state.achievements,
         collectibles: state.collectibles,
+        quests: state.quests,
         redeemCodes: state.redeemCodes,
+        shipPosition: state.shipPosition, // Persist ship position
         selectedEggForHatching: state.selectedEggForHatching,
         isHatchingInProgress: state.isHatchingInProgress,
         hatchingEgg: state.hatchingEgg,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Rehydrate dates for all objects
+          // Rehydrate dates
           if (state.user) state.user = rehydrateDates(state.user);
-          if (state.activePet)
-            state.activePet = rehydrateDates(state.activePet);
+          if (state.activePet) state.activePet = rehydrateDates(state.activePet);
           if (state.pets) state.pets = state.pets.map(rehydrateDates);
-          if (state.inventory)
-            state.inventory = state.inventory.map(rehydrateDates);
-          if (state.notifications)
-            state.notifications = state.notifications.map(rehydrateDates);
-          if (state.achievements)
-            state.achievements = state.achievements.map(rehydrateDates);
-          if (state.collectibles)
-            state.collectibles = state.collectibles.map(rehydrateDates);
-          if (state.redeemCodes)
-            state.redeemCodes = state.redeemCodes.map(rehydrateDates);
-          if (state.hatchingEgg) {
-            state.hatchingEgg = rehydrateDates(state.hatchingEgg);
-
-            // Validate that hatching egg belongs to current user
-            if (
-              state.user &&
-              state.hatchingEgg &&
-              state.hatchingEgg.userId !== state.user.id
-            ) {
-              // Clear invalid hatching state from different user
-              state.selectedEggForHatching = null;
-              state.isHatchingInProgress = false;
-              state.hatchingEgg = null;
-            }
-          }
+          if (state.inventory) state.inventory = state.inventory.map(rehydrateDates);
+          if (state.notifications) state.notifications = state.notifications.map(rehydrateDates);
+          if (state.achievements) state.achievements = state.achievements.map(rehydrateDates);
+          if (state.collectibles) state.collectibles = state.collectibles.map(rehydrateDates);
+          if (state.quests) state.quests = state.quests.map(rehydrateDates);
+          if (state.redeemCodes) state.redeemCodes = state.redeemCodes.map(rehydrateDates);
+          if (state.hatchingEgg) state.hatchingEgg = rehydrateDates(state.hatchingEgg);
         }
       },
-    },
-  ),
+    }
+  )
 );
